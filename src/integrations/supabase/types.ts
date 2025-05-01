@@ -124,6 +124,69 @@ export type Database = {
           },
         ]
       }
+      prediction_markets: {
+        Row: {
+          asset_name: string
+          contract_address: string | null
+          creation_timestamp: string
+          description: string | null
+          expiry_timestamp: string
+          id: string
+          no_pool: number
+          settled_price: number | null
+          status: string
+          strike_price: number
+          yes_pool: number
+        }
+        Insert: {
+          asset_name: string
+          contract_address?: string | null
+          creation_timestamp?: string
+          description?: string | null
+          expiry_timestamp: string
+          id?: string
+          no_pool?: number
+          settled_price?: number | null
+          status?: string
+          strike_price: number
+          yes_pool?: number
+        }
+        Update: {
+          asset_name?: string
+          contract_address?: string | null
+          creation_timestamp?: string
+          description?: string | null
+          expiry_timestamp?: string
+          id?: string
+          no_pool?: number
+          settled_price?: number | null
+          status?: string
+          strike_price?: number
+          yes_pool?: number
+        }
+        Relationships: []
+      }
+      price_feeds: {
+        Row: {
+          asset_name: string
+          id: string
+          price: number
+          timestamp: string
+        }
+        Insert: {
+          asset_name: string
+          id?: string
+          price: number
+          timestamp?: string
+        }
+        Update: {
+          asset_name?: string
+          id?: string
+          price?: number
+          timestamp?: string
+        }
+        Relationships: []
+      }
       site_pages: {
         Row: {
           chunk_number: number
@@ -184,6 +247,44 @@ export type Database = {
         }
         Relationships: []
       }
+      user_positions: {
+        Row: {
+          amount: number
+          claimed: boolean
+          id: string
+          market_id: string
+          position_type: string
+          timestamp: string
+          user_wallet_address: string
+        }
+        Insert: {
+          amount: number
+          claimed?: boolean
+          id?: string
+          market_id: string
+          position_type: string
+          timestamp?: string
+          user_wallet_address: string
+        }
+        Update: {
+          amount?: number
+          claimed?: boolean
+          id?: string
+          market_id?: string
+          position_type?: string
+          timestamp?: string
+          user_wallet_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_positions_market_id_fkey"
+            columns: ["market_id"]
+            isOneToOne: false
+            referencedRelation: "prediction_markets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_trackit: {
         Row: {
           created_at: string | null
@@ -237,6 +338,10 @@ export type Database = {
       binary_quantize: {
         Args: { "": string } | { "": unknown }
         Returns: unknown
+      }
+      get_latest_price: {
+        Args: { asset: string }
+        Returns: number
       }
       halfvec_avg: {
         Args: { "": number[] }
