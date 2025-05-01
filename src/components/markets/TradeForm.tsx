@@ -49,13 +49,27 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       // For now, we'll just update the database
       const amountValue = parseFloat(amount);
       
-      // First update the market's pool
+      // First get the current pool amount
+      const { data: marketData, error: fetchError } = await supabase
+        .from('prediction_markets')
+        .select(position === 'yes' ? 'yes_pool' : 'no_pool')
+        .eq('id', marketId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const currentPoolAmount = position === 'yes' 
+        ? Number(marketData.yes_pool) 
+        : Number(marketData.no_pool);
+      
+      // Then update with the new total
+      const newTotal = currentPoolAmount + amountValue;
+      
+      // Update the market's pool
       const { error: marketError } = await supabase
         .from('prediction_markets')
         .update({
-          [`${position}_pool`]: supabase.rpc('get_latest_price', { 
-            asset: position === 'yes' ? 'yes_pool' : 'no_pool' 
-          }) + amountValue
+          [position === 'yes' ? 'yes_pool' : 'no_pool']: newTotal
         })
         .eq('id', marketId);
 
@@ -133,7 +147,7 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       
       <Button 
         type="submit" 
-        className="w-full bg-purple-600 hover:bg-purple-700" 
+        className="w-full bg-orange-600 hover:bg-orange-700" 
         disabled={isSubmitting}
       >
         {isSubmitting ? 'Processing...' : 'Place Prediction'}
