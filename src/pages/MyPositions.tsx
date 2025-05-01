@@ -1,229 +1,264 @@
 
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/layout/Layout';
-import { Link } from 'react-router-dom';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Link } from 'react-router-dom';
+import { formatDistance } from 'date-fns';
 
-interface UserPosition {
+interface Market {
   id: string;
+  asset_name: string;
+  strike_price: number;
+  expiry_timestamp: string;
+  status: string;
+}
+
+interface Position {
+  id: string;
+  user_wallet_address: string;
   market_id: string;
   position_type: 'yes' | 'no';
   amount: number;
   timestamp: string;
   claimed: boolean;
-  market: {
-    asset_name: string;
-    strike_price: number;
-    status: string;
-    expiry_timestamp: string;
-    settled_price: number | null;
-  };
+  market: Market;
 }
 
 const MyPositions = () => {
-  const [positions, setPositions] = useState<UserPosition[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  
+  // Simulated wallet address for demo purposes
+  useEffect(() => {
+    const simulatedAddress = '0x123456789abcdef0123456789abcdef012345678';
+    setWalletAddress(simulatedAddress);
+  }, []);
 
   const fetchPositions = async () => {
+    if (!walletAddress) return;
+    
     setIsLoading(true);
-    
-    // This would be replaced with actual wallet address in production
-    const mockWalletAddress = localStorage.getItem('walletAddress');
-    
-    if (!mockWalletAddress) {
-      setIsLoading(false);
-      return;
-    }
-    
     try {
+      // Fetch positions with market details
       const { data, error } = await supabase
         .from('user_positions')
         .select(`
           *,
-          market:prediction_markets(
-            asset_name,
-            strike_price,
-            status,
+          market:market_id (
+            id, 
+            asset_name, 
+            strike_price, 
             expiry_timestamp,
-            settled_price
+            status
           )
         `)
-        .eq('user_wallet_address', mockWalletAddress)
-        .order('timestamp', { ascending: false });
-        
+        .eq('user_wallet_address', walletAddress);
+      
       if (error) throw error;
-      setPositions(data as unknown as UserPosition[]);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to load positions",
-        variant: "destructive",
-      });
+      setPositions(data as Position[]);
+    } catch (error) {
+      console.error('Error fetching positions:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPositions();
-    
-    // Mock wallet connection for demo
-    if (!localStorage.getItem('walletAddress')) {
-      localStorage.setItem('walletAddress', '0x' + Math.random().toString(16).substring(2, 14));
+    if (walletAddress) {
+      fetchPositions();
     }
-  }, []);
+  }, [walletAddress]);
 
-  const handleClaim = async (positionId: string) => {
+  const handleClaimRewards = async (positionId: string) => {
     try {
+      // Update the claimed status to true
       const { error } = await supabase
         .from('user_positions')
         .update({ claimed: true })
         .eq('id', positionId);
-        
+      
       if (error) throw error;
       
-      toast({
-        title: "Position Claimed",
-        description: "Your winnings have been claimed successfully",
-      });
-      
+      // Refresh the positions list
       fetchPositions();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to claim position",
-        variant: "destructive",
-      });
+    } catch (error) {
+      console.error('Error claiming rewards:', error);
     }
   };
 
-  const getOutcomeStatus = (position: UserPosition) => {
-    if (position.market.status !== 'settled' || position.market.settled_price === null) {
-      return "Pending";
+  const getPositionValue = (position: Position): number => {
+    // This is a simplified calculation
+    // In a real app, this would be calculated based on the pool sizes and odds
+    return position.amount;
+  };
+
+  const calculateTotalValue = (): number => {
+    return positions.reduce((total, position) => total + getPositionValue(position), 0);
+  };
+
+  const isMarketExpired = (expiryTimestamp: string): boolean => {
+    return new Date(expiryTimestamp) <= new Date();
+  };
+
+  const isWinningPosition = (position: Position): boolean => {
+    // Simplified logic - in a real app, this would check the settled price against the strike price
+    const market = position.market;
+    if (market.status !== 'settled') return false;
+    
+    // Randomly determine if this position is winning (for demo purposes)
+    // In reality, this would be determined by comparing settled price to strike price
+    const random = position.id.charCodeAt(0) % 2 === 0;
+    return (position.position_type === 'yes' && random) || 
+           (position.position_type === 'no' && !random);
+  };
+
+  const renderPositionStatus = (position: Position) => {
+    const market = position.market;
+    
+    if (market.status === 'active') {
+      return <Badge className="bg-blue-500">Active</Badge>;
     }
     
-    const isYesWin = Number(position.market.settled_price) > Number(position.market.strike_price);
-    
-    if ((position.position_type === 'yes' && isYesWin) || 
-        (position.position_type === 'no' && !isYesWin)) {
-      return "Win";
-    } else {
-      return "Loss";
+    if (market.status === 'settled') {
+      if (isWinningPosition(position)) {
+        return position.claimed ? 
+          <Badge className="bg-green-500">Claimed</Badge> : 
+          <Badge className="bg-green-500">Won</Badge>;
+      } else {
+        return <Badge className="bg-red-500">Lost</Badge>;
+      }
     }
+    
+    return <Badge>Unknown</Badge>;
   };
-
-  const handleConnect = () => {
-    localStorage.setItem('walletAddress', '0x' + Math.random().toString(16).substring(2, 14));
-    fetchPositions();
-  };
-
-  if (!localStorage.getItem('walletAddress')) {
-    return (
-      <Layout>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">My Positions</h1>
-          <p className="text-gray-600 mb-6">Connect your wallet to view your positions</p>
-          <Button onClick={handleConnect} className="bg-purple-600 hover:bg-purple-700">
-            Connect Wallet
-          </Button>
-        </div>
-      </Layout>
-    );
-  }
 
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-6">My Positions</h1>
+        
+        {walletAddress ? (
+          <>
+            <div className="mb-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Portfolio Summary</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Total Positions</p>
+                      <p className="text-2xl font-bold">{positions.length}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Total Value</p>
+                      <p className="text-2xl font-bold">${calculateTotalValue().toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Wallet</p>
+                      <p className="text-sm font-mono truncate">{walletAddress}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
-        {isLoading ? (
-          <div className="h-64 bg-gray-200 rounded-lg animate-pulse"></div>
-        ) : positions.length === 0 ? (
-          <div className="text-center py-12 border rounded-lg bg-gray-50">
-            <h3 className="text-lg font-medium text-gray-500 mb-2">No positions yet</h3>
-            <p className="text-gray-400 mb-6">You haven't opened any prediction positions yet</p>
-            <Link to="/markets">
-              <Button className="bg-purple-600 hover:bg-purple-700">
-                Browse Markets
-              </Button>
-            </Link>
-          </div>
+            {isLoading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+              </div>
+            ) : positions.length > 0 ? (
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Market</TableHead>
+                        <TableHead>Position</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Expiry</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {positions.map((position) => (
+                        <TableRow key={position.id}>
+                          <TableCell>
+                            <Link to={`/markets/${position.market_id}`} className="text-blue-600 hover:underline">
+                              {position.market.asset_name} {`>`} ${Number(position.market.strike_price).toFixed(2)}
+                            </Link>
+                          </TableCell>
+                          <TableCell className={position.position_type === 'yes' ? 'text-green-500' : 'text-red-500'}>
+                            {position.position_type === 'yes' ? 'Above' : 'Below'}
+                          </TableCell>
+                          <TableCell>${Number(position.amount).toFixed(2)}</TableCell>
+                          <TableCell>{new Date(position.timestamp).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            {isMarketExpired(position.market.expiry_timestamp) ? 
+                              'Expired' : 
+                              formatDistance(new Date(position.market.expiry_timestamp), new Date(), { addSuffix: true })}
+                          </TableCell>
+                          <TableCell>
+                            {renderPositionStatus(position)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {position.market.status === 'settled' && 
+                             isWinningPosition(position) && 
+                             !position.claimed && (
+                              <Button 
+                                size="sm" 
+                                className="bg-orange-600 hover:bg-orange-700"
+                                onClick={() => handleClaimRewards(position.id)}
+                              >
+                                Claim
+                              </Button>
+                            )}
+                            {(position.market.status === 'active' || !isWinningPosition(position) || position.claimed) && (
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="text-gray-500 border-gray-300"
+                                disabled
+                              >
+                                {position.market.status === 'active' ? 'Active' : position.claimed ? 'Claimed' : 'Lost'}
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="text-center p-12 bg-gray-50 rounded-lg">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No positions yet</h3>
+                <p className="text-gray-500 mb-6">You haven't made any predictions yet</p>
+                <Link to="/markets">
+                  <Button className="bg-orange-600 hover:bg-orange-700">Browse Markets</Button>
+                </Link>
+              </div>
+            )}
+          </>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Market</TableHead>
-                  <TableHead>Position</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Outcome</TableHead>
-                  <TableHead>Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {positions.map((position) => {
-                  const outcomeStatus = getOutcomeStatus(position);
-                  const date = new Date(position.timestamp).toLocaleDateString();
-                  
-                  return (
-                    <TableRow key={position.id}>
-                      <TableCell>
-                        <Link to={`/markets/${position.market_id}`} className="text-blue-600 hover:underline">
-                          {position.market.asset_name} > ${Number(position.market.strike_price).toFixed(2)}
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        <span className={position.position_type === 'yes' ? 'text-green-600' : 'text-red-600'}>
-                          {position.position_type.toUpperCase()}
-                        </span>
-                      </TableCell>
-                      <TableCell>{Number(position.amount).toFixed(2)}</TableCell>
-                      <TableCell>{date}</TableCell>
-                      <TableCell>
-                        <span
-                          className={`px-2 py-1 rounded text-xs font-medium
-                            ${position.market.status === 'active' 
-                              ? 'bg-blue-100 text-blue-800' 
-                              : 'bg-gray-100 text-gray-800'}`}
-                        >
-                          {position.market.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        {outcomeStatus === "Pending" ? (
-                          <span className="text-yellow-600">Pending</span>
-                        ) : outcomeStatus === "Win" ? (
-                          <span className="text-green-600">Win</span>
-                        ) : (
-                          <span className="text-red-600">Loss</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {outcomeStatus === "Win" && !position.claimed && position.market.status === 'settled' ? (
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleClaim(position.id)}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            Claim
-                          </Button>
-                        ) : position.claimed ? (
-                          <span className="text-green-600">Claimed</span>
-                        ) : (
-                          "-"
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+          <div className="text-center p-12 bg-gray-50 rounded-lg">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Connect your wallet</h3>
+            <p className="text-gray-500 mb-6">Connect your wallet to view your positions</p>
+            <Button className="bg-orange-600 hover:bg-orange-700">Connect Wallet</Button>
           </div>
         )}
       </div>

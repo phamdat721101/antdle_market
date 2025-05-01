@@ -36,9 +36,9 @@ export const MarketCard = ({
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
-      <CardHeader className="bg-gradient-to-r from-blue-800 to-purple-800 text-white">
+      <CardHeader className="bg-gradient-to-r from-red-500 to-orange-500 text-white">
         <CardTitle className="text-xl flex justify-between items-center">
-          <span>{assetName} > ${strikePrice.toFixed(2)}</span>
+          <span>{assetName} {`>`} ${strikePrice.toFixed(2)}</span>
           <span className={`text-sm px-2 py-1 rounded ${status === 'active' ? 'bg-green-500' : 'bg-gray-500'}`}>
             {status}
           </span>
@@ -72,7 +72,7 @@ export const MarketCard = ({
         <Link to={`/markets/${id}`} className="w-full">
           <Button 
             variant="outline" 
-            className="w-full border-purple-500 text-purple-500 hover:bg-purple-50"
+            className="w-full border-orange-500 text-orange-500 hover:bg-orange-50"
           >
             {isExpired ? 'View Results' : 'Trade Now'}
           </Button>

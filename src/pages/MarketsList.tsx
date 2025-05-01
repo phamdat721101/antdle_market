@@ -68,7 +68,7 @@ const MarketsList = () => {
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="mt-4 md:mt-0 bg-purple-600 hover:bg-purple-700">
+              <Button className="mt-4 md:mt-0 bg-orange-600 hover:bg-orange-700">
                 Create Market
               </Button>
             </DialogTrigger>

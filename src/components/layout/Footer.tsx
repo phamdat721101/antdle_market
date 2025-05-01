@@ -13,13 +13,13 @@ export const Footer = () => {
             © {new Date().getFullYear()} LeoFi Prediction Markets. All rights reserved.
           </div>
           <div className="flex space-x-6 mt-4 md:mt-0">
-            <a href="#" className="text-gray-400 hover:text-white">
+            <a href="#" className="text-gray-400 hover:text-orange-400">
               Twitter
             </a>
-            <a href="#" className="text-gray-400 hover:text-white">
+            <a href="#" className="text-gray-400 hover:text-orange-400">
               Discord
             </a>
-            <a href="#" className="text-gray-400 hover:text-white">
+            <a href="#" className="text-gray-400 hover:text-orange-400">
               GitHub
             </a>
           </div>
