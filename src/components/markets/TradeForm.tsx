@@ -50,17 +50,18 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       const amountValue = parseFloat(amount);
       
       // First get the current pool amount
+      const poolField = position === 'yes' ? 'yes_pool' : 'no_pool';
+      
       const { data: marketData, error: fetchError } = await supabase
         .from('prediction_markets')
-        .select(position === 'yes' ? 'yes_pool' : 'no_pool')
+        .select(poolField)
         .eq('id', marketId)
         .single();
 
       if (fetchError) throw fetchError;
 
-      const currentPoolAmount = position === 'yes' 
-        ? Number(marketData.yes_pool) 
-        : Number(marketData.no_pool);
+      // Safely access the pool amount using the known field
+      const currentPoolAmount = marketData[poolField] as number;
       
       // Then update with the new total
       const newTotal = currentPoolAmount + amountValue;
@@ -69,7 +70,7 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       const { error: marketError } = await supabase
         .from('prediction_markets')
         .update({
-          [position === 'yes' ? 'yes_pool' : 'no_pool']: newTotal
+          [poolField]: newTotal
         })
         .eq('id', marketId);
 
