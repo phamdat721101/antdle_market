@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
@@ -8,12 +8,24 @@ export const Wallet = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const { toast } = useToast();
 
+  // Check if wallet is already connected when component mounts
+  useEffect(() => {
+    const savedAddress = localStorage.getItem('walletAddress');
+    if (savedAddress) {
+      setAddress(savedAddress);
+    }
+  }, []);
+
   const connectWallet = async () => {
     setIsConnecting(true);
     try {
       // Mock wallet connection - in a real app, we would use wagmi or web3modal
       await new Promise(resolve => setTimeout(resolve, 1000));
       const mockAddress = '0x' + Math.random().toString(16).substring(2, 14);
+      
+      // Save address to localStorage
+      localStorage.setItem('walletAddress', mockAddress);
+      
       setAddress(mockAddress);
       toast({
         title: "Wallet Connected",
@@ -31,6 +43,9 @@ export const Wallet = () => {
   };
 
   const disconnectWallet = () => {
+    // Remove from localStorage
+    localStorage.removeItem('walletAddress');
+    
     setAddress(null);
     toast({
       title: "Wallet Disconnected",

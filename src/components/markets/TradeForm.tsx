@@ -32,9 +32,11 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       return;
     }
 
-    // Check if wallet is connected (this would be handled by a real wallet provider)
-    const mockWalletAddress = localStorage.getItem('walletAddress');
-    if (!mockWalletAddress) {
+    // Check if wallet is connected
+    const walletAddress = localStorage.getItem('walletAddress');
+    console.log("Wallet address from localStorage:", walletAddress);
+    
+    if (!walletAddress) {
       toast({
         title: "Wallet Not Connected",
         description: "Please connect your wallet to trade",
@@ -58,13 +60,18 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
         .eq('id', marketId)
         .single();
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error("Error fetching market data:", fetchError);
+        throw fetchError;
+      }
 
       // Safely access the pool amount using the known field
       const currentPoolAmount = marketData[poolField] as number;
+      console.log(`Current ${poolField} amount:`, currentPoolAmount);
       
       // Then update with the new total
       const newTotal = currentPoolAmount + amountValue;
+      console.log(`New ${poolField} total:`, newTotal);
       
       // Update the market's pool
       const { error: marketError } = await supabase
@@ -74,19 +81,30 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
         })
         .eq('id', marketId);
 
-      if (marketError) throw marketError;
+      if (marketError) {
+        console.error("Error updating market pool:", marketError);
+        throw marketError;
+      }
 
+      console.log("Creating user position record with wallet:", walletAddress);
+      
       // Then record the user's position
-      const { error: positionError } = await supabase
+      const { data: positionData, error: positionError } = await supabase
         .from('user_positions')
         .insert({
           market_id: marketId,
-          user_wallet_address: mockWalletAddress,
+          user_wallet_address: walletAddress,
           position_type: position,
           amount: amountValue
-        });
+        })
+        .select();
 
-      if (positionError) throw positionError;
+      if (positionError) {
+        console.error("Error creating position:", positionError);
+        throw positionError;
+      }
+
+      console.log("Position created successfully:", positionData);
 
       toast({
         title: "Position Opened",
@@ -96,6 +114,7 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       setAmount('');
       onSuccess();
     } catch (error: any) {
+      console.error("Trade submission error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to open position",
@@ -108,7 +127,7 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+      <div className="p-4 bg-orange-50 rounded-lg border border-orange-100">
         <h3 className="font-medium text-lg mb-2">Market</h3>
         <p>Will {assetName} be above ${strikePrice} at expiry?</p>
       </div>
