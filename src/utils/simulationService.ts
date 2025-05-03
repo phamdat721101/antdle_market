@@ -17,6 +17,12 @@ interface SimulatedTransaction {
   timestamp: string; // Using string timestamp for JSON compatibility
 }
 
+// Define transaction status return type to avoid deep type instantiation
+interface TransactionStatusResult {
+  status: 'pending' | 'confirmed' | 'failed' | 'not_found';
+  transaction?: Record<string, any>;
+}
+
 // Generate a random transaction hash
 const generateTxHash = () => {
   return '0x' + [...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
@@ -116,7 +122,7 @@ export const simulatePlacePrediction = async (
 };
 
 // Get transaction status
-export const getTransactionStatus = async (txHash: string) => {
+export const getTransactionStatus = async (txHash: string): Promise<TransactionStatusResult> => {
   try {
     const { data, error } = await supabase
       .from('logs')
@@ -131,11 +137,11 @@ export const getTransactionStatus = async (txHash: string) => {
       return { status: 'not_found' };
     }
     
-    // Use a simple type assertion to avoid circular reference
-    const details = data[0].details as any;
+    // Use a simple type assertion with Record<string, any> to avoid circular reference
+    const details = data[0].details as Record<string, any>;
     
     return {
-      status: details.status,
+      status: details.status as 'pending' | 'confirmed' | 'failed',
       transaction: details
     };
   } catch (error) {
