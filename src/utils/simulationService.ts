@@ -14,7 +14,7 @@ interface SimulatedTransaction {
   value: number;
   data: any;
   status: 'pending' | 'confirmed' | 'failed';
-  timestamp: Date;
+  timestamp: string; // Changed from Date to string for JSON compatibility
 }
 
 // Generate a random transaction hash
@@ -38,7 +38,7 @@ export const simulatePlacePrediction = async (
   try {
     const txHash = generateTxHash();
     
-    // Log the transaction
+    // Log the transaction - using string timestamp for JSON compatibility
     const transaction: SimulatedTransaction = {
       txHash,
       fromAddress: userAddress,
@@ -46,14 +46,14 @@ export const simulatePlacePrediction = async (
       value: amount,
       data: { marketId, position },
       status: 'pending',
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
     
-    // Store transaction in database (optional, could be in-memory too)
+    // Convert transaction to a plain object for Supabase
     await supabase.from('logs').insert({
       action: 'place_prediction',
       user_id: null, // Not using the users table ID
-      details: transaction
+      details: transaction as unknown as Record<string, any>, // Type assertion for compatibility
     });
     
     // Simulate blockchain delay
@@ -97,12 +97,15 @@ export const simulatePlacePrediction = async (
     if (positionError) throw positionError;
     
     // Update transaction status
-    const updatedTransaction = { ...transaction, status: 'confirmed' };
+    const updatedTransaction = { 
+      ...transaction, 
+      status: 'confirmed' 
+    };
     
     await supabase.from('logs').insert({
       action: 'prediction_confirmed',
       user_id: null,
-      details: updatedTransaction
+      details: updatedTransaction as unknown as Record<string, any>, // Type assertion for compatibility
     });
 
     return { success: true, txHash };
@@ -128,9 +131,12 @@ export const getTransactionStatus = async (txHash: string) => {
       return { status: 'not_found' };
     }
     
+    // Type assertion to handle JSON data
+    const details = data[0].details as Record<string, any>;
+    
     return {
-      status: data[0].details.status,
-      transaction: data[0].details
+      status: details.status,
+      transaction: details
     };
   } catch (error) {
     console.error('Error fetching transaction status:', error);
@@ -151,13 +157,13 @@ export const simulateClaimRewards = async (userAddress: string, positionId: stri
       value: 0, // Will be updated after calculating reward
       data: { positionId },
       status: 'pending',
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(), // Using string timestamp for JSON compatibility
     };
     
     await supabase.from('logs').insert({
       action: 'claim_rewards',
       user_id: null,
-      details: transaction
+      details: transaction as unknown as Record<string, any>, // Type assertion for compatibility
     });
     
     // Simulate blockchain delay
@@ -210,7 +216,7 @@ export const simulateClaimRewards = async (userAddress: string, positionId: stri
     await supabase.from('logs').insert({
       action: 'rewards_claimed',
       user_id: null,
-      details: updatedTransaction
+      details: updatedTransaction as unknown as Record<string, any>, // Type assertion for compatibility
     });
     
     return { 

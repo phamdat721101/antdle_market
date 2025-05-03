@@ -123,7 +123,7 @@ export const Wallet = () => {
         variant: "destructive",
       });
     } finally {
-      setIsConnitting(false);
+      setIsConnecting(false); // Fixed typo: was setIsConnitting
     }
   };
 

@@ -24,6 +24,7 @@ interface Market {
   strike_price: number;
   expiry_timestamp: string;
   status: string;
+  settled_price?: number | null; // Make settled_price optional
 }
 
 interface Position {
@@ -161,7 +162,7 @@ const MyPositions = () => {
 
   const isWinningPosition = (position: Position): boolean => {
     const market = position.market;
-    if (market.status !== 'settled' || market.settled_price === null) return false;
+    if (market.status !== 'settled' || market.settled_price === null || market.settled_price === undefined) return false;
     
     // Determine if position is winning based on settled price vs strike price
     return (position.position_type === 'yes' && market.settled_price > market.strike_price) || 
