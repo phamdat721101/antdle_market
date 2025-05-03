@@ -53,7 +53,7 @@ export const simulatePlacePrediction = async (
     await supabase.from('logs').insert({
       action: 'place_prediction',
       user_id: null, // Not using the users table ID
-      details: transaction as any, // Simplified type assertion
+      details: transaction as any, // Use simple type assertion
     });
     
     // Simulate blockchain delay
@@ -105,7 +105,7 @@ export const simulatePlacePrediction = async (
     await supabase.from('logs').insert({
       action: 'prediction_confirmed',
       user_id: null,
-      details: updatedTransaction as any, // Simplified type assertion
+      details: updatedTransaction as any, // Use simple type assertion
     });
 
     return { success: true, txHash };
@@ -157,13 +157,13 @@ export const simulateClaimRewards = async (userAddress: string, positionId: stri
       value: 0, // Will be updated after calculating reward
       data: { positionId },
       status: 'pending',
-      timestamp: new Date().toISOString(), // Using string timestamp for JSON compatibility
+      timestamp: new Date().toISOString(),
     };
     
     await supabase.from('logs').insert({
       action: 'claim_rewards',
       user_id: null,
-      details: transaction as any, // Simplified type assertion
+      details: transaction as any, // Use simple type assertion
     });
     
     // Simulate blockchain delay
@@ -216,7 +216,7 @@ export const simulateClaimRewards = async (userAddress: string, positionId: stri
     await supabase.from('logs').insert({
       action: 'rewards_claimed',
       user_id: null,
-      details: updatedTransaction as any, // Simplified type assertion
+      details: updatedTransaction as any, // Use simple type assertion
     });
     
     return { 
