@@ -14,7 +14,7 @@ interface SimulatedTransaction {
   value: number;
   data: any;
   status: 'pending' | 'confirmed' | 'failed';
-  timestamp: string; // Changed from Date to string for JSON compatibility
+  timestamp: string; // Using string timestamp for JSON compatibility
 }
 
 // Generate a random transaction hash
@@ -53,7 +53,7 @@ export const simulatePlacePrediction = async (
     await supabase.from('logs').insert({
       action: 'place_prediction',
       user_id: null, // Not using the users table ID
-      details: transaction as unknown as Record<string, any>, // Type assertion for compatibility
+      details: transaction as any, // Simplified type assertion
     });
     
     // Simulate blockchain delay
@@ -105,7 +105,7 @@ export const simulatePlacePrediction = async (
     await supabase.from('logs').insert({
       action: 'prediction_confirmed',
       user_id: null,
-      details: updatedTransaction as unknown as Record<string, any>, // Type assertion for compatibility
+      details: updatedTransaction as any, // Simplified type assertion
     });
 
     return { success: true, txHash };
@@ -131,8 +131,8 @@ export const getTransactionStatus = async (txHash: string) => {
       return { status: 'not_found' };
     }
     
-    // Type assertion to handle JSON data
-    const details = data[0].details as Record<string, any>;
+    // Fixed: Use type assertion without circular reference
+    const details = data[0].details as any;
     
     return {
       status: details.status,
@@ -163,7 +163,7 @@ export const simulateClaimRewards = async (userAddress: string, positionId: stri
     await supabase.from('logs').insert({
       action: 'claim_rewards',
       user_id: null,
-      details: transaction as unknown as Record<string, any>, // Type assertion for compatibility
+      details: transaction as any, // Simplified type assertion
     });
     
     // Simulate blockchain delay
@@ -216,7 +216,7 @@ export const simulateClaimRewards = async (userAddress: string, positionId: stri
     await supabase.from('logs').insert({
       action: 'rewards_claimed',
       user_id: null,
-      details: updatedTransaction as unknown as Record<string, any>, // Type assertion for compatibility
+      details: updatedTransaction as any, // Simplified type assertion
     });
     
     return { 
