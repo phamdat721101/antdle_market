@@ -131,7 +131,7 @@ export const getTransactionStatus = async (txHash: string) => {
       return { status: 'not_found' };
     }
     
-    // Fixed: Use type assertion without circular reference
+    // Use a simple type assertion to avoid circular reference
     const details = data[0].details as any;
     
     return {
