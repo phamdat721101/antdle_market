@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from 'react-router-dom';
 import { formatDistance } from 'date-fns';
+import { simulateClaimRewards } from '@/utils/simulationService';
+import { useToast } from '@/hooks/use-toast';
 
 interface Market {
   id: string;
@@ -39,11 +41,22 @@ const MyPositions = () => {
   const [positions, setPositions] = useState<Position[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [claimingId, setClaimingId] = useState<string | null>(null);
+  const { toast } = useToast();
   
-  // Simulated wallet address for demo purposes
+  // Get wallet address from localStorage on component mount
   useEffect(() => {
-    const simulatedAddress = '0x123456789abcdef0123456789abcdef012345678';
-    setWalletAddress(simulatedAddress);
+    const savedAddress = localStorage.getItem('walletAddress');
+    setWalletAddress(savedAddress);
+    
+    // Listen for wallet connection/disconnection events
+    const handleStorageChange = () => {
+      const currentAddress = localStorage.getItem('walletAddress');
+      setWalletAddress(currentAddress);
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const fetchPositions = async () => {
@@ -61,7 +74,8 @@ const MyPositions = () => {
             asset_name, 
             strike_price, 
             expiry_timestamp,
-            status
+            status,
+            settled_price
           )
         `)
         .eq('user_wallet_address', walletAddress);
@@ -70,6 +84,11 @@ const MyPositions = () => {
       setPositions(data as Position[]);
     } catch (error) {
       console.error('Error fetching positions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load your positions",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -78,29 +97,57 @@ const MyPositions = () => {
   useEffect(() => {
     if (walletAddress) {
       fetchPositions();
+    } else {
+      setPositions([]);
     }
   }, [walletAddress]);
 
   const handleClaimRewards = async (positionId: string) => {
+    // Check if connected to correct chain
+    const chainConnected = localStorage.getItem('chainConnected') === 'true';
+    if (!chainConnected) {
+      toast({
+        title: "Wrong Network",
+        description: "Please connect to the LeoFi Prediction Chain",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!walletAddress) {
+      toast({
+        title: "Wallet Not Connected",
+        description: "Please connect your wallet to claim rewards",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setClaimingId(positionId);
     try {
-      // Update the claimed status to true
-      const { error } = await supabase
-        .from('user_positions')
-        .update({ claimed: true })
-        .eq('id', positionId);
+      // Simulate claiming rewards on-chain
+      const result = await simulateClaimRewards(walletAddress, positionId);
       
-      if (error) throw error;
+      toast({
+        title: "Rewards Claimed",
+        description: `Successfully claimed ${result.rewardAmount} LEO tokens on-chain`,
+      });
       
-      // Refresh the positions list
+      // Refresh positions
       fetchPositions();
-    } catch (error) {
-      console.error('Error claiming rewards:', error);
+    } catch (error: any) {
+      toast({
+        title: "Claim Failed",
+        description: error.message || "Failed to claim rewards",
+        variant: "destructive",
+      });
+    } finally {
+      setClaimingId(null);
     }
   };
 
   const getPositionValue = (position: Position): number => {
-    // This is a simplified calculation
-    // In a real app, this would be calculated based on the pool sizes and odds
+    // Calculate position value based on amount
     return position.amount;
   };
 
@@ -113,15 +160,12 @@ const MyPositions = () => {
   };
 
   const isWinningPosition = (position: Position): boolean => {
-    // Simplified logic - in a real app, this would check the settled price against the strike price
     const market = position.market;
-    if (market.status !== 'settled') return false;
+    if (market.status !== 'settled' || market.settled_price === null) return false;
     
-    // Randomly determine if this position is winning (for demo purposes)
-    // In reality, this would be determined by comparing settled price to strike price
-    const random = position.id.charCodeAt(0) % 2 === 0;
-    return (position.position_type === 'yes' && random) || 
-           (position.position_type === 'no' && !random);
+    // Determine if position is winning based on settled price vs strike price
+    return (position.position_type === 'yes' && market.settled_price > market.strike_price) || 
+           (position.position_type === 'no' && market.settled_price <= market.strike_price);
   };
 
   const renderPositionStatus = (position: Position) => {
@@ -147,7 +191,7 @@ const MyPositions = () => {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">My Positions</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">My On-Chain Positions</h1>
         
         {walletAddress ? (
           <>
@@ -164,11 +208,12 @@ const MyPositions = () => {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Total Value</p>
-                      <p className="text-2xl font-bold">${calculateTotalValue().toFixed(2)}</p>
+                      <p className="text-2xl font-bold">{calculateTotalValue().toFixed(2)} LEO</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Wallet</p>
+                      <p className="text-sm text-gray-500">Connected Wallet</p>
                       <p className="text-sm font-mono truncate">{walletAddress}</p>
+                      <p className="text-xs text-gray-500">LeoFi Prediction Chain</p>
                     </div>
                   </div>
                 </CardContent>
@@ -205,7 +250,7 @@ const MyPositions = () => {
                           <TableCell className={position.position_type === 'yes' ? 'text-green-500' : 'text-red-500'}>
                             {position.position_type === 'yes' ? 'Above' : 'Below'}
                           </TableCell>
-                          <TableCell>${Number(position.amount).toFixed(2)}</TableCell>
+                          <TableCell>{position.amount.toFixed(2)} LEO</TableCell>
                           <TableCell>{new Date(position.timestamp).toLocaleDateString()}</TableCell>
                           <TableCell>
                             {isMarketExpired(position.market.expiry_timestamp) ? 
@@ -223,8 +268,9 @@ const MyPositions = () => {
                                 size="sm" 
                                 className="bg-orange-600 hover:bg-orange-700"
                                 onClick={() => handleClaimRewards(position.id)}
+                                disabled={claimingId === position.id}
                               >
-                                Claim
+                                {claimingId === position.id ? 'Claiming...' : 'Claim On-Chain'}
                               </Button>
                             )}
                             {(position.market.status === 'active' || !isWinningPosition(position) || position.claimed) && (
@@ -247,7 +293,7 @@ const MyPositions = () => {
             ) : (
               <div className="text-center p-12 bg-gray-50 rounded-lg">
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No positions yet</h3>
-                <p className="text-gray-500 mb-6">You haven't made any predictions yet</p>
+                <p className="text-gray-500 mb-6">You haven't made any on-chain predictions yet</p>
                 <Link to="/markets">
                   <Button className="bg-orange-600 hover:bg-orange-700">Browse Markets</Button>
                 </Link>
@@ -257,7 +303,7 @@ const MyPositions = () => {
         ) : (
           <div className="text-center p-12 bg-gray-50 rounded-lg">
             <h3 className="text-lg font-medium text-gray-900 mb-2">Connect your wallet</h3>
-            <p className="text-gray-500 mb-6">Connect your wallet to view your positions</p>
+            <p className="text-gray-500 mb-6">Connect your wallet to the LeoFi Prediction Chain to view your positions</p>
             <Button className="bg-orange-600 hover:bg-orange-700">Connect Wallet</Button>
           </div>
         )}

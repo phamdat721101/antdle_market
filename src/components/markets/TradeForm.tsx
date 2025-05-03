@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { simulatePlacePrediction } from '@/utils/simulationService';
 
 interface TradeFormProps {
   marketId: string;
@@ -18,6 +18,8 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
   const [position, setPosition] = useState<'yes' | 'no'>('yes');
   const [amount, setAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [txStatus, setTxStatus] = useState<'pending' | 'confirmed' | 'failed' | null>(null);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,7 +36,6 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
 
     // Check if wallet is connected
     const walletAddress = localStorage.getItem('walletAddress');
-    console.log("Wallet address from localStorage:", walletAddress);
     
     if (!walletAddress) {
       toast({
@@ -45,79 +46,45 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      // In a real app, we would call a smart contract here
-      // For now, we'll just update the database
-      const amountValue = parseFloat(amount);
-      
-      // First get the current pool amount
-      const poolField = position === 'yes' ? 'yes_pool' : 'no_pool';
-      
-      const { data: marketData, error: fetchError } = await supabase
-        .from('prediction_markets')
-        .select(poolField)
-        .eq('id', marketId)
-        .single();
-
-      if (fetchError) {
-        console.error("Error fetching market data:", fetchError);
-        throw fetchError;
-      }
-
-      // Safely access the pool amount using the known field
-      const currentPoolAmount = marketData[poolField] as number;
-      console.log(`Current ${poolField} amount:`, currentPoolAmount);
-      
-      // Then update with the new total
-      const newTotal = currentPoolAmount + amountValue;
-      console.log(`New ${poolField} total:`, newTotal);
-      
-      // Update the market's pool
-      const { error: marketError } = await supabase
-        .from('prediction_markets')
-        .update({
-          [poolField]: newTotal
-        })
-        .eq('id', marketId);
-
-      if (marketError) {
-        console.error("Error updating market pool:", marketError);
-        throw marketError;
-      }
-
-      console.log("Creating user position record with wallet:", walletAddress);
-      
-      // Then record the user's position
-      const { data: positionData, error: positionError } = await supabase
-        .from('user_positions')
-        .insert({
-          market_id: marketId,
-          user_wallet_address: walletAddress,
-          position_type: position,
-          amount: amountValue
-        })
-        .select();
-
-      if (positionError) {
-        console.error("Error creating position:", positionError);
-        throw positionError;
-      }
-
-      console.log("Position created successfully:", positionData);
-
+    // Check if connected to correct chain
+    const chainConnected = localStorage.getItem('chainConnected') === 'true';
+    if (!chainConnected) {
       toast({
-        title: "Position Opened",
-        description: `You have successfully opened a ${position.toUpperCase()} position for ${amount} tokens`,
+        title: "Wrong Network",
+        description: "Please connect to the LeoFi Prediction Chain",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setTxStatus('pending');
+    try {
+      // Simulate on-chain transaction
+      const amountValue = parseFloat(amount);
+      const result = await simulatePlacePrediction(
+        walletAddress,
+        marketId,
+        position,
+        amountValue
+      );
+      
+      setTxHash(result.txHash);
+      setTxStatus('confirmed');
+      
+      toast({
+        title: "Transaction Confirmed",
+        description: `Your ${position.toUpperCase()} prediction for ${amount} LEO has been placed on-chain`,
       });
       
       setAmount('');
       onSuccess();
     } catch (error: any) {
-      console.error("Trade submission error:", error);
+      console.error("Transaction error:", error);
+      setTxStatus('failed');
       toast({
-        title: "Error",
-        description: error.message || "Failed to open position",
+        title: "Transaction Failed",
+        description: error.message || "Failed to place prediction on-chain",
         variant: "destructive",
       });
     } finally {
@@ -151,7 +118,7 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       </div>
       
       <div>
-        <Label htmlFor="amount">Amount</Label>
+        <Label htmlFor="amount">Amount (LEO)</Label>
         <div className="mt-1">
           <Input
             id="amount"
@@ -163,14 +130,26 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
             onChange={(e) => setAmount(e.target.value)}
           />
         </div>
+        <p className="text-xs text-gray-500 mt-1">
+          *Transaction will be processed on-chain
+        </p>
       </div>
+      
+      {txStatus === 'pending' && txHash && (
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="text-sm flex items-center">
+            <span className="inline-block h-2 w-2 bg-blue-600 rounded-full animate-pulse mr-2"></span>
+            Transaction pending: {txHash.substring(0, 6)}...{txHash.substring(txHash.length - 4)}
+          </p>
+        </div>
+      )}
       
       <Button 
         type="submit" 
         className="w-full bg-orange-600 hover:bg-orange-700" 
         disabled={isSubmitting}
       >
-        {isSubmitting ? 'Processing...' : 'Place Prediction'}
+        {isSubmitting ? 'Processing On-Chain...' : 'Place On-Chain Prediction'}
       </Button>
     </form>
   );

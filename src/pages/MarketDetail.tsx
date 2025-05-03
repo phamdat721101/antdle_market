@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Layout } from '../components/layout/Layout';
@@ -8,6 +7,7 @@ import { TradeForm } from '../components/markets/TradeForm';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistance } from 'date-fns';
+import { simulateClaimRewards } from '@/utils/simulationService';
 
 interface Market {
   id: string;
@@ -20,6 +20,14 @@ interface Market {
   status: string;
   settled_price: number | null;
   description?: string;
+  contract_address?: string;
+}
+
+interface UserPosition {
+  id: string;
+  position_type: 'yes' | 'no';
+  amount: number;
+  claimed: boolean;
 }
 
 const MarketDetail = () => {
@@ -27,6 +35,8 @@ const MarketDetail = () => {
   const [market, setMarket] = useState<Market | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [latestPrice, setLatestPrice] = useState<number | null>(null);
+  const [userPosition, setUserPosition] = useState<UserPosition | null>(null);
+  const [isClaiming, setIsClaiming] = useState(false);
   const { toast } = useToast();
 
   const fetchMarket = async () => {
@@ -55,6 +65,22 @@ const MarketDetail = () => {
       if (priceData && priceData.length > 0) {
         setLatestPrice(priceData[0].price);
       }
+      
+      // Fetch user position if wallet is connected
+      const walletAddress = localStorage.getItem('walletAddress');
+      if (walletAddress) {
+        const { data: positionData, error: positionError } = await supabase
+          .from('user_positions')
+          .select('*')
+          .eq('market_id', id)
+          .eq('user_wallet_address', walletAddress)
+          .order('timestamp', { ascending: false })
+          .limit(1);
+          
+        if (!positionError && positionData && positionData.length > 0) {
+          setUserPosition(positionData[0] as UserPosition);
+        }
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -69,6 +95,24 @@ const MarketDetail = () => {
   useEffect(() => {
     fetchMarket();
   }, [id]);
+
+  // Listen for wallet connection/disconnection changes
+  useEffect(() => {
+    const checkWallet = () => {
+      const walletAddress = localStorage.getItem('walletAddress');
+      if (!walletAddress && userPosition) {
+        setUserPosition(null);
+      } else if (walletAddress && !userPosition && id) {
+        fetchMarket();
+      }
+    };
+    
+    window.addEventListener('storage', checkWallet);
+    
+    return () => {
+      window.removeEventListener('storage', checkWallet);
+    };
+  }, [id, userPosition]);
 
   const handleSettleMarket = async () => {
     if (!market || !latestPrice) return;
@@ -100,10 +144,49 @@ const MarketDetail = () => {
   };
 
   const handleClaimWinnings = async () => {
-    toast({
-      title: "Coming Soon",
-      description: "Claiming functionality will be available in the next update",
-    });
+    if (!userPosition || !market) return;
+    
+    const walletAddress = localStorage.getItem('walletAddress');
+    if (!walletAddress) {
+      toast({
+        title: "Wallet Not Connected",
+        description: "Please connect your wallet to claim winnings",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Check if connected to correct chain
+    const chainConnected = localStorage.getItem('chainConnected') === 'true';
+    if (!chainConnected) {
+      toast({
+        title: "Wrong Network",
+        description: "Please connect to the LeoFi Prediction Chain",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsClaiming(true);
+    try {
+      // Simulate on-chain claim transaction
+      const result = await simulateClaimRewards(walletAddress, userPosition.id);
+      
+      toast({
+        title: "Winnings Claimed",
+        description: `Your winnings of ${result.rewardAmount} LEO have been sent to your wallet`,
+      });
+      
+      fetchMarket(); // Refresh data to show claimed status
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to claim winnings",
+        variant: "destructive",
+      });
+    } finally {
+      setIsClaiming(false);
+    }
   };
 
   if (isLoading) {
@@ -142,6 +225,12 @@ const MarketDetail = () => {
     outcome = Number(market.settled_price) > Number(market.strike_price) ? 'YES' : 'NO';
   }
 
+  // Check if user has winning position
+  const hasWinningPosition = userPosition && market.status === 'settled' && market.settled_price !== null && (
+    (userPosition.position_type === 'yes' && Number(market.settled_price) > Number(market.strike_price)) ||
+    (userPosition.position_type === 'no' && Number(market.settled_price) <= Number(market.strike_price))
+  );
+
   return (
     <Layout>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -159,6 +248,11 @@ const MarketDetail = () => {
           <div className="mt-4 text-sm text-gray-500">
             <p>Created: {creationDate.toLocaleDateString()}</p>
             <p>Expires: {timeToExpiry}</p>
+            {market.contract_address && (
+              <p className="mt-2">
+                Contract: <span className="font-mono text-xs">{market.contract_address}</span>
+              </p>
+            )}
             {latestPrice && (
               <p className="font-medium text-blue-600 mt-2">
                 Current Price: ${latestPrice.toFixed(2)}
@@ -176,6 +270,26 @@ const MarketDetail = () => {
                 </h2>
               </CardHeader>
               <CardContent className="pt-6">
+                {/* User position display */}
+                {userPosition && (
+                  <div className={`p-4 mb-6 rounded-lg border ${userPosition.position_type === 'yes' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                    <h3 className="font-medium mb-1">Your On-Chain Position</h3>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p>
+                          <span className="font-bold">{userPosition.position_type === 'yes' ? 'YES' : 'NO'}</span>
+                          <span className="ml-2">({userPosition.amount} LEO)</span>
+                        </p>
+                      </div>
+                      {market.status === 'settled' && (
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${hasWinningPosition ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                          {hasWinningPosition ? (userPosition.claimed ? 'Claimed' : 'Winner') : 'Lost'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="mb-6">
                   <div className="flex justify-between text-sm mb-1">
                     <span>Yes ({yesPercentage.toFixed(1)}%)</span>
@@ -196,11 +310,11 @@ const MarketDetail = () => {
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="p-4 bg-green-50 rounded-lg border border-green-100 text-center">
                     <p className="text-sm text-green-600 mb-1">YES Pool</p>
-                    <p className="text-xl font-bold">{Number(market.yes_pool).toFixed(2)}</p>
+                    <p className="text-xl font-bold">{Number(market.yes_pool).toFixed(2)} LEO</p>
                   </div>
                   <div className="p-4 bg-red-50 rounded-lg border border-red-100 text-center">
                     <p className="text-sm text-red-600 mb-1">NO Pool</p>
-                    <p className="text-xl font-bold">{Number(market.no_pool).toFixed(2)}</p>
+                    <p className="text-xl font-bold">{Number(market.no_pool).toFixed(2)} LEO</p>
                   </div>
                 </div>
 
@@ -224,12 +338,13 @@ const MarketDetail = () => {
                   </Button>
                 )}
 
-                {market.status === 'settled' && (
+                {hasWinningPosition && !userPosition.claimed && (
                   <Button 
                     onClick={handleClaimWinnings} 
                     className="w-full bg-green-600 hover:bg-green-700"
+                    disabled={isClaiming}
                   >
-                    Claim Winnings
+                    {isClaiming ? 'Processing On-Chain...' : 'Claim Winnings On-Chain'}
                   </Button>
                 )}
               </CardContent>
@@ -240,7 +355,7 @@ const MarketDetail = () => {
             {market.status === 'active' && !isExpired ? (
               <Card>
                 <CardHeader className="bg-gradient-to-r from-purple-800 to-indigo-800 text-white">
-                  <h2 className="text-xl font-bold">Trade</h2>
+                  <h2 className="text-xl font-bold">Trade On-Chain</h2>
                 </CardHeader>
                 <CardContent className="pt-6">
                   <TradeForm 
