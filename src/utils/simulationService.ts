@@ -137,8 +137,8 @@ export const getTransactionStatus = async (txHash: string): Promise<TransactionS
       return { status: 'not_found' };
     }
     
-    // Use a simple type assertion with Record<string, any> to avoid circular reference
-    const details = data[0].details as Record<string, any>;
+    // Using any type to avoid deep instantiation issues
+    const details = data[0].details as any;
     
     return {
       status: details.status as 'pending' | 'confirmed' | 'failed',
