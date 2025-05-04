@@ -7,20 +7,31 @@ export const ADMIN_WALLET = '0x8742fa092eEf9C337AC1720Cf60E7f0D4EF35054';
 // Simulated contract address
 export const PREDICTION_CONTRACT_ADDRESS = '0x9d76B7fBaD6A93565C0D4ABD9B9b14343d2D9AC4';
 
+// Define clear interfaces to avoid type instantiation errors
 interface SimulatedTransaction {
   txHash: string;
   fromAddress: string;
   toAddress: string;
   value: number;
-  data: any;
+  data: Record<string, any>;
   status: 'pending' | 'confirmed' | 'failed';
   timestamp: string; // Using string timestamp for JSON compatibility
 }
 
-// Define transaction status return type to avoid deep type instantiation
 interface TransactionStatusResult {
   status: 'pending' | 'confirmed' | 'failed' | 'not_found';
   transaction?: Record<string, any>;
+}
+
+interface ClaimRewardResult {
+  success: boolean;
+  txHash: string;
+  rewardAmount: number;
+}
+
+interface PlacePredictionResult {
+  success: boolean;
+  txHash: string;
 }
 
 // Generate a random transaction hash
@@ -40,7 +51,7 @@ export const simulatePlacePrediction = async (
   marketId: string, 
   position: 'yes' | 'no', 
   amount: number
-) => {
+): Promise<PlacePredictionResult> => {
   try {
     const txHash = generateTxHash();
     
@@ -59,7 +70,7 @@ export const simulatePlacePrediction = async (
     await supabase.from('logs').insert({
       action: 'place_prediction',
       user_id: null, // Not using the users table ID
-      details: transaction as any, // Use simple type assertion
+      details: transaction as Record<string, any>, // Use explicit type assertion
     });
     
     // Simulate blockchain delay
@@ -111,7 +122,7 @@ export const simulatePlacePrediction = async (
     await supabase.from('logs').insert({
       action: 'prediction_confirmed',
       user_id: null,
-      details: updatedTransaction as any, // Use simple type assertion
+      details: updatedTransaction as Record<string, any>, // Use explicit type assertion
     });
 
     return { success: true, txHash };
@@ -137,11 +148,11 @@ export const getTransactionStatus = async (txHash: string): Promise<TransactionS
       return { status: 'not_found' };
     }
     
-    // Using any type to avoid deep instantiation issues
-    const details = data[0].details as any;
+    // Use Record<string, any> type assertion to avoid circular reference
+    const details = data[0].details as Record<string, any>;
     
     return {
-      status: details.status as 'pending' | 'confirmed' | 'failed',
+      status: details.status,
       transaction: details
     };
   } catch (error) {
@@ -151,7 +162,10 @@ export const getTransactionStatus = async (txHash: string): Promise<TransactionS
 };
 
 // Simulate claiming rewards
-export const simulateClaimRewards = async (userAddress: string, positionId: string) => {
+export const simulateClaimRewards = async (
+  userAddress: string, 
+  positionId: string
+): Promise<ClaimRewardResult> => {
   try {
     const txHash = generateTxHash();
     
@@ -169,7 +183,7 @@ export const simulateClaimRewards = async (userAddress: string, positionId: stri
     await supabase.from('logs').insert({
       action: 'claim_rewards',
       user_id: null,
-      details: transaction as any, // Use simple type assertion
+      details: transaction as Record<string, any>, // Use explicit type assertion
     });
     
     // Simulate blockchain delay
@@ -222,7 +236,7 @@ export const simulateClaimRewards = async (userAddress: string, positionId: stri
     await supabase.from('logs').insert({
       action: 'rewards_claimed',
       user_id: null,
-      details: updatedTransaction as any, // Use simple type assertion
+      details: updatedTransaction as Record<string, any>, // Use explicit type assertion
     });
     
     return { 
