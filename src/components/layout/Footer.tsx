@@ -7,7 +7,11 @@ export const Footer = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="mb-4 md:mb-0">
-            <img src="/src/assets/leofi-logo.png" alt="LeoFi" className="h-8 w-auto" />
+            <img 
+              src="/public/lovable-uploads/c0644965-c636-4342-84e5-924e811e94f0.png" 
+              alt="LeoFi" 
+              className="h-10 w-auto" 
+            />
           </div>
           <div className="text-sm">
             © {new Date().getFullYear()} LeoFi Prediction Markets. All rights reserved.

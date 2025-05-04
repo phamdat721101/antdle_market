@@ -1,251 +1,156 @@
-
+// simulationService.ts
+import { faker } from '@faker-js/faker';
 import { supabase } from '@/integrations/supabase/client';
+import { TransactionStatusResult, TransactionDetails } from './typeHelpers';
 
-// Admin wallet that will receive all funds
-export const ADMIN_WALLET = '0x8742fa092eEf9C337AC1720Cf60E7f0D4EF35054';
+const generateRandomMarketData = () => {
+  const assetName = faker.finance.currencyName();
+  const strikePrice = parseFloat(faker.finance.amount(10, 200, 2));
+  const expiryTimestamp = faker.date.future().toISOString();
+  const yesPool = parseFloat(faker.finance.amount(100, 1000, 2));
+  const noPool = parseFloat(faker.finance.amount(100, 1000, 2));
+  const status = faker.helpers.arrayElement(['active', 'settled']);
+  const description = faker.lorem.sentence();
 
-// Simulated contract address
-export const PREDICTION_CONTRACT_ADDRESS = '0x9d76B7fBaD6A93565C0D4ABD9B9b14343d2D9AC4';
-
-// Define clear interfaces to avoid type instantiation errors
-interface SimulatedTransaction {
-  txHash: string;
-  fromAddress: string;
-  toAddress: string;
-  value: number;
-  data: Record<string, any>;
-  status: 'pending' | 'confirmed' | 'failed';
-  timestamp: string; // Using string timestamp for JSON compatibility
-}
-
-interface TransactionStatusResult {
-  status: 'pending' | 'confirmed' | 'failed' | 'not_found';
-  transaction?: Record<string, any>;
-}
-
-interface ClaimRewardResult {
-  success: boolean;
-  txHash: string;
-  rewardAmount: number;
-}
-
-interface PlacePredictionResult {
-  success: boolean;
-  txHash: string;
-}
-
-// Generate a random transaction hash
-const generateTxHash = () => {
-  return '0x' + [...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+  return {
+    asset_name: assetName,
+    strike_price: strikePrice,
+    expiry_timestamp: expiryTimestamp,
+    yes_pool: yesPool,
+    no_pool: noPool,
+    status: status,
+    description: description,
+  };
 };
 
-// Simulate a delay for transaction processing
-const simulateTransactionDelay = () => {
-  const delay = Math.floor(Math.random() * 3000) + 2000; // 2-5 seconds
-  return new Promise(resolve => setTimeout(resolve, delay));
-};
-
-// Simulate placing a bet (prediction)
-export const simulatePlacePrediction = async (
-  userAddress: string, 
-  marketId: string, 
-  position: 'yes' | 'no', 
-  amount: number
-): Promise<PlacePredictionResult> => {
+const simulateMarketCreation = async (): Promise<TransactionStatusResult> => {
   try {
-    const txHash = generateTxHash();
-    
-    // Log the transaction - using string timestamp for JSON compatibility
-    const transaction: SimulatedTransaction = {
-      txHash,
-      fromAddress: userAddress,
-      toAddress: PREDICTION_CONTRACT_ADDRESS,
-      value: amount,
-      data: { marketId, position },
-      status: 'pending',
-      timestamp: new Date().toISOString(),
-    };
-    
-    // Convert transaction to a plain object for Supabase
-    await supabase.from('logs').insert({
-      action: 'place_prediction',
-      user_id: null, // Not using the users table ID
-      details: transaction as Record<string, any>, // Use explicit type assertion
-    });
-    
-    // Simulate blockchain delay
-    await simulateTransactionDelay();
-    
-    // First get the current pool amount
-    const poolField = position === 'yes' ? 'yes_pool' : 'no_pool';
-    
-    const { data: marketData, error: fetchError } = await supabase
+    const marketData = generateRandomMarketData();
+    const { data, error } = await supabase
       .from('prediction_markets')
-      .select(poolField)
+      .insert([marketData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Supabase error:", error);
+      return { status: 'failed', details: { error: error.message } };
+    }
+
+    return { status: 'success', details: { marketId: data.id, ...marketData } };
+  } catch (error: any) {
+    console.error("Unexpected error:", error);
+    return { status: 'failed', details: { error: error.message } };
+  }
+};
+
+const simulateTrade = async (marketId: string, isYes: boolean, amount: number): Promise<TransactionStatusResult> => {
+  try {
+    // Fetch the current market data
+    const { data: marketData, error: marketError } = await supabase
+      .from('prediction_markets')
+      .select('*')
       .eq('id', marketId)
       .single();
 
-    if (fetchError) throw fetchError;
+    if (marketError) {
+      console.error("Error fetching market:", marketError);
+      return { status: 'failed', details: { error: marketError.message } };
+    }
 
-    // Update pool amount
-    const currentPoolAmount = marketData[poolField] as number;
-    const newTotal = currentPoolAmount + amount;
-    
-    // Update the market's pool
-    const { error: marketError } = await supabase
+    if (!marketData) {
+      return { status: 'failed', details: { error: 'Market not found' } };
+    }
+
+    // Simulate the trade by updating the pool values
+    const updatedYesPool = isYes ? marketData.yes_pool + amount : marketData.yes_pool;
+    const updatedNoPool = !isYes ? marketData.no_pool + amount : marketData.no_pool;
+
+    // Update the market in Supabase
+    const { error: updateError } = await supabase
       .from('prediction_markets')
-      .update({
-        [poolField]: newTotal
-      })
+      .update({ yes_pool: updatedYesPool, no_pool: updatedNoPool })
       .eq('id', marketId);
 
-    if (marketError) throw marketError;
-
-    // Record the user's position
-    const { error: positionError } = await supabase
-      .from('user_positions')
-      .insert({
-        market_id: marketId,
-        user_wallet_address: userAddress,
-        position_type: position,
-        amount: amount
-      });
-
-    if (positionError) throw positionError;
-    
-    // Update transaction status
-    const updatedTransaction = { 
-      ...transaction, 
-      status: 'confirmed' 
-    };
-    
-    await supabase.from('logs').insert({
-      action: 'prediction_confirmed',
-      user_id: null,
-      details: updatedTransaction as Record<string, any>, // Use explicit type assertion
-    });
-
-    return { success: true, txHash };
-  } catch (error) {
-    console.error('Simulation error:', error);
-    throw error;
-  }
-};
-
-// Get transaction status
-export const getTransactionStatus = async (txHash: string): Promise<TransactionStatusResult> => {
-  try {
-    const { data, error } = await supabase
-      .from('logs')
-      .select('details')
-      .eq('details->txHash', txHash)
-      .order('created_at', { ascending: false })
-      .limit(1);
-    
-    if (error) throw error;
-    
-    if (!data || data.length === 0) {
-      return { status: 'not_found' };
+    if (updateError) {
+      console.error("Error updating market:", updateError);
+      return { status: 'failed', details: { error: updateError.message } };
     }
-    
-    // Use Record<string, any> type assertion to avoid circular reference
-    const details = data[0].details as Record<string, any>;
-    
-    return {
-      status: details.status,
-      transaction: details
-    };
-  } catch (error) {
-    console.error('Error fetching transaction status:', error);
-    throw error;
+
+    return { status: 'success', details: { marketId, isYes, amount, updatedYesPool, updatedNoPool } };
+  } catch (error: any) {
+    console.error("Trade simulation error:", error);
+    return { status: 'failed', details: { error: error.message } };
   }
 };
 
-// Simulate claiming rewards
-export const simulateClaimRewards = async (
-  userAddress: string, 
-  positionId: string
-): Promise<ClaimRewardResult> => {
+const simulateMarketSettlement = async (marketId: string, settlementValue: boolean): Promise<TransactionStatusResult> => {
   try {
-    const txHash = generateTxHash();
-    
-    // Log the transaction
-    const transaction: SimulatedTransaction = {
-      txHash,
-      fromAddress: PREDICTION_CONTRACT_ADDRESS,
-      toAddress: userAddress,
-      value: 0, // Will be updated after calculating reward
-      data: { positionId },
-      status: 'pending',
-      timestamp: new Date().toISOString(),
-    };
-    
-    await supabase.from('logs').insert({
-      action: 'claim_rewards',
-      user_id: null,
-      details: transaction as Record<string, any>, // Use explicit type assertion
-    });
-    
-    // Simulate blockchain delay
-    await simulateTransactionDelay();
-    
-    // Get position details
-    const { data: position, error: positionError } = await supabase
-      .from('user_positions')
-      .select(`
-        *,
-        market:market_id (
-          settled_price,
-          strike_price,
-          status
-        )
-      `)
-      .eq('id', positionId)
+    // Fetch the market data
+    const { data: marketData, error: marketError } = await supabase
+      .from('prediction_markets')
+      .select('*')
+      .eq('id', marketId)
       .single();
-    
-    if (positionError) throw positionError;
-    
-    // Check if position exists and market is settled
-    if (!position || position.market.status !== 'settled') {
-      throw new Error('Position not found or market not settled');
+
+    if (marketError) {
+      console.error("Error fetching market:", marketError);
+      return { status: 'failed', details: { error: marketError.message } };
     }
-    
-    // Update position as claimed
+
+    if (!marketData) {
+      return { status: 'failed', details: { error: 'Market not found' } };
+    }
+
+    // Simulate settlement by updating the market status
     const { error: updateError } = await supabase
-      .from('user_positions')
-      .update({ claimed: true })
-      .eq('id', positionId);
-    
-    if (updateError) throw updateError;
-    
-    // Calculate reward (simplified)
-    const isWinner = (position.position_type === 'yes' && 
-                     position.market.settled_price > position.market.strike_price) ||
-                     (position.position_type === 'no' && 
-                     position.market.settled_price <= position.market.strike_price);
-    
-    const rewardAmount = isWinner ? position.amount * 2 : 0;
-    
-    // Update transaction with reward amount
-    const updatedTransaction = { 
-      ...transaction, 
-      status: 'confirmed',
-      value: rewardAmount
-    };
-    
-    await supabase.from('logs').insert({
-      action: 'rewards_claimed',
-      user_id: null,
-      details: updatedTransaction as Record<string, any>, // Use explicit type assertion
-    });
-    
-    return { 
-      success: true, 
-      txHash,
-      rewardAmount
-    };
-  } catch (error) {
-    console.error('Simulation error:', error);
-    throw error;
+      .from('prediction_markets')
+      .update({ status: 'settled', settlement_value: settlementValue })
+      .eq('id', marketId);
+
+    if (updateError) {
+      console.error("Error settling market:", updateError);
+      return { status: 'failed', details: { error: updateError.message } };
+    }
+
+    return { status: 'success', details: { marketId, settlementValue } };
+  } catch (error: any) {
+    console.error("Market settlement error:", error);
+    return { status: 'failed', details: { error: error.message } };
   }
+};
+
+const simulateTransaction = async (action: string, details: any): Promise<TransactionStatusResult> => {
+  const transactionDetails: TransactionDetails = {
+    hash: faker.string.alphanumeric(42),
+    from: faker.finance.ethereumAddress(),
+    to: faker.finance.ethereumAddress(),
+    value: faker.finance.amount(0.001, 1, 10),
+    gasUsed: faker.finance.amount(21000, 100000, 0),
+    blockNumber: faker.number.int({ min: 1000000, max: 2000000 }),
+    timestamp: faker.date.recent().toISOString(),
+    action,
+    details,
+  };
+
+  // Simulate different transaction outcomes
+  const outcome = faker.helpers.arrayElement(['success', 'failed', 'pending']);
+
+  switch (outcome) {
+    case 'success':
+      return { status: 'success', details: transactionDetails };
+    case 'failed':
+      return { status: 'failed', details: { ...transactionDetails, error: faker.lorem.sentence() } };
+    case 'pending':
+      return { status: 'pending', details: transactionDetails };
+    default:
+      return { status: 'unknown', details: { message: 'Unexpected simulation outcome.' } };
+  }
+};
+
+export const SimulationService = {
+  simulateMarketCreation,
+  simulateTrade,
+  simulateMarketSettlement,
+  simulateTransaction,
 };

@@ -42,7 +42,7 @@ const Index = () => {
         <div className="lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2">
           <div className="h-56 w-full bg-gradient-to-r from-red-700 to-orange-600 sm:h-72 md:h-96 lg:w-full lg:h-full flex items-center justify-center">
             <img 
-              src="/src/assets/leofi-logo.png" 
+              src="/public/lovable-uploads/c0644965-c636-4342-84e5-924e811e94f0.png" 
               alt="LeoFi Logo"
               className="h-64 w-64 object-contain"
             />

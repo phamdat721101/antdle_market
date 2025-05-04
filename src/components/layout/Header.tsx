@@ -10,8 +10,12 @@ export const Header = () => {
         <div className="flex justify-between items-center py-4">
           <div className="flex items-center">
             <Link to="/" className="flex items-center">
-              <img src="/src/assets/leofi-logo.png" alt="LeoFi" className="h-10 w-auto mr-2" />
-              <span className="text-white text-2xl font-bold">LeoFi</span>
+              <img 
+                src="/public/lovable-uploads/c0644965-c636-4342-84e5-924e811e94f0.png" 
+                alt="LeoFi" 
+                className="h-12 w-auto mr-2" 
+              />
+              <span className="text-white text-3xl font-bold">LeoFi</span>
             </Link>
           </div>
           <nav className="flex items-center space-x-8">
