@@ -156,12 +156,12 @@ const MarketDetail = () => {
       return;
     }
     
-    // Check if connected to correct chain
+    // Check if connected to any chain
     const chainConnected = localStorage.getItem('chainConnected') === 'true';
     if (!chainConnected) {
       toast({
-        title: "Wrong Network",
-        description: "Please connect to the LeoFi Prediction Chain",
+        title: "No Network Connected",
+        description: "Please connect to a blockchain network via MetaMask",
         variant: "destructive",
       });
       return;
@@ -172,9 +172,12 @@ const MarketDetail = () => {
       // Simulate on-chain claim transaction
       const result = await simulateClaimRewards(walletAddress, userPosition.id);
       
+      // Get chain name for better user experience
+      const chainName = localStorage.getItem('chainName') || 'blockchain';
+      
       toast({
         title: "Winnings Claimed",
-        description: `Your winnings of ${result.rewardAmount} LEO have been sent to your wallet`,
+        description: `Your winnings of ${result.rewardAmount} LEO have been sent to your wallet on ${chainName}`,
       });
       
       fetchMarket(); // Refresh data to show claimed status

@@ -8,71 +8,72 @@ export const Wallet = () => {
   const [address, setAddress] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [chainConnected, setChainConnected] = useState(false);
+  const [chainId, setChainId] = useState<string | null>(null);
+  const [chainName, setChainName] = useState<string | null>(null);
   const { toast } = useToast();
-
-  // Custom chain parameters
-  const customChain = {
-    chainId: '0x539', // 1337 in hex
-    chainName: 'LeoFi Prediction Chain',
-    nativeCurrency: {
-      name: 'LEO',
-      symbol: 'LEO',
-      decimals: 18
-    },
-    rpcUrls: ['https://rpc.leofi-prediction.network'],
-    blockExplorerUrls: ['https://explorer.leofi-prediction.network']
-  };
 
   // Check if wallet is already connected when component mounts
   useEffect(() => {
     const savedAddress = localStorage.getItem('walletAddress');
     const savedChainStatus = localStorage.getItem('chainConnected') === 'true';
+    const savedChainId = localStorage.getItem('chainId');
+    const savedChainName = localStorage.getItem('chainName');
     
     if (savedAddress) {
       setAddress(savedAddress);
       setChainConnected(savedChainStatus);
+      setChainId(savedChainId);
+      setChainName(savedChainName);
     }
+
+    // Listen for chain changes
+    if (window.ethereum) {
+      window.ethereum.on('chainChanged', handleChainChanged);
+    }
+
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeListener('chainChanged', handleChainChanged);
+      }
+    };
   }, []);
 
-  const addCustomChain = async () => {
-    if (!window.ethereum) {
-      toast({
-        title: "MetaMask Not Found",
-        description: "Please install MetaMask to use this feature",
-        variant: "destructive",
-      });
-      return false;
-    }
-
+  const handleChainChanged = async (chainIdHex: string) => {
+    // Update chain information when the user changes networks in MetaMask
+    setChainId(chainIdHex);
     try {
-      await window.ethereum.request({
-        method: 'wallet_addEthereumChain',
-        params: [customChain],
-      });
-      
-      // Switch to the custom chain
-      await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: customChain.chainId }],
-      });
-      
-      localStorage.setItem('chainConnected', 'true');
-      setChainConnected(true);
-      
-      toast({
-        title: "Network Connected",
-        description: `Connected to ${customChain.chainName}`,
-      });
-      
-      return true;
-    } catch (error: any) {
-      console.error("Error adding custom chain:", error);
-      toast({
-        title: "Network Connection Failed",
-        description: error.message || "Failed to connect to prediction network",
-        variant: "destructive",
-      });
-      return false;
+      if (window.ethereum) {
+        const chainData = await window.ethereum.request({
+          method: 'eth_chainId',
+        });
+        
+        if (chainData) {
+          setChainConnected(true);
+          localStorage.setItem('chainConnected', 'true');
+          localStorage.setItem('chainId', chainIdHex);
+          
+          // Try to get chain name
+          try {
+            const chainInfo = await window.ethereum.request({
+              method: 'eth_getChainId',
+            });
+            
+            // Set a default chain name based on common chain IDs
+            let name = 'Unknown Network';
+            if (chainIdHex === '0x1') name = 'Ethereum Mainnet';
+            else if (chainIdHex === '0x5') name = 'Goerli Testnet';
+            else if (chainIdHex === '0x89') name = 'Polygon';
+            else if (chainIdHex === '0xa86a') name = 'Avalanche';
+            
+            setChainName(name);
+            localStorage.setItem('chainName', name);
+          } catch (error) {
+            console.log('Could not get chain name', error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error handling chain change:', error);
     }
   };
 
@@ -88,11 +89,24 @@ export const Wallet = () => {
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       const userAddress = accounts[0];
       
-      // Connect to custom chain
-      const chainAdded = await addCustomChain();
-      if (!chainAdded) {
-        throw new Error("Failed to connect to prediction network");
-      }
+      // Get current chain ID
+      const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
+      
+      // Set chain as connected
+      setChainConnected(true);
+      setChainId(chainIdHex);
+      localStorage.setItem('chainConnected', 'true');
+      localStorage.setItem('chainId', chainIdHex);
+      
+      // Try to get chain name
+      let chainName = 'Connected Chain';
+      if (chainIdHex === '0x1') chainName = 'Ethereum Mainnet';
+      else if (chainIdHex === '0x5') chainName = 'Goerli Testnet';
+      else if (chainIdHex === '0x89') chainName = 'Polygon';
+      else if (chainIdHex === '0xa86a') chainName = 'Avalanche';
+      
+      setChainName(chainName);
+      localStorage.setItem('chainName', chainName);
       
       // Save address to localStorage
       localStorage.setItem('walletAddress', userAddress);
@@ -114,7 +128,7 @@ export const Wallet = () => {
       setAddress(userAddress);
       toast({
         title: "Wallet Connected",
-        description: `Connected to ${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`,
+        description: `Connected to ${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)} on ${chainName}`,
       });
     } catch (error: any) {
       toast({
@@ -123,7 +137,7 @@ export const Wallet = () => {
         variant: "destructive",
       });
     } finally {
-      setIsConnecting(false); // Fixed typo: was setIsConnitting
+      setIsConnecting(false);
     }
   };
 
@@ -131,9 +145,14 @@ export const Wallet = () => {
     // Remove from localStorage
     localStorage.removeItem('walletAddress');
     localStorage.removeItem('chainConnected');
+    localStorage.removeItem('chainId');
+    localStorage.removeItem('chainName');
     
     setAddress(null);
     setChainConnected(false);
+    setChainId(null);
+    setChainName(null);
+    
     toast({
       title: "Wallet Disconnected",
       description: "Your wallet has been disconnected",
@@ -143,8 +162,11 @@ export const Wallet = () => {
   if (address) {
     return (
       <div className="flex items-center">
-        <div className={`px-3 py-2 rounded-md mr-2 text-white ${chainConnected ? 'bg-green-600' : 'bg-purple-600'}`}>
+        <div className="px-3 py-2 rounded-md mr-2 text-white bg-purple-600">
           {`${address.substring(0, 6)}...${address.substring(address.length - 4)}`}
+          {chainName && (
+            <span className="text-xs block">{chainName}</span>
+          )}
         </div>
         <Button 
           variant="outline" 

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
@@ -104,12 +103,12 @@ const MyPositions = () => {
   }, [walletAddress]);
 
   const handleClaimRewards = async (positionId: string) => {
-    // Check if connected to correct chain
+    // Check if connected to any chain
     const chainConnected = localStorage.getItem('chainConnected') === 'true';
     if (!chainConnected) {
       toast({
-        title: "Wrong Network",
-        description: "Please connect to the LeoFi Prediction Chain",
+        title: "No Network Connected",
+        description: "Please connect to a blockchain network via MetaMask",
         variant: "destructive",
       });
       return;
@@ -129,9 +128,12 @@ const MyPositions = () => {
       // Simulate claiming rewards on-chain
       const result = await simulateClaimRewards(walletAddress, positionId);
       
+      // Get chain name for better user experience
+      const chainName = localStorage.getItem('chainName') || 'blockchain';
+      
       toast({
         title: "Rewards Claimed",
-        description: `Successfully claimed ${result.rewardAmount} LEO tokens on-chain`,
+        description: `Successfully claimed ${result.rewardAmount} LEO tokens on ${chainName}`,
       });
       
       // Refresh positions
@@ -214,7 +216,7 @@ const MyPositions = () => {
                     <div>
                       <p className="text-sm text-gray-500">Connected Wallet</p>
                       <p className="text-sm font-mono truncate">{walletAddress}</p>
-                      <p className="text-xs text-gray-500">LeoFi Prediction Chain</p>
+                      <p className="text-xs text-gray-500">{localStorage.getItem('chainName') || 'Connected Chain'}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -304,7 +306,7 @@ const MyPositions = () => {
         ) : (
           <div className="text-center p-12 bg-gray-50 rounded-lg">
             <h3 className="text-lg font-medium text-gray-900 mb-2">Connect your wallet</h3>
-            <p className="text-gray-500 mb-6">Connect your wallet to the LeoFi Prediction Chain to view your positions</p>
+            <p className="text-gray-500 mb-6">Connect your wallet to view your positions</p>
             <Button className="bg-orange-600 hover:bg-orange-700">Connect Wallet</Button>
           </div>
         )}

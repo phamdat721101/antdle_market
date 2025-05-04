@@ -46,12 +46,12 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       return;
     }
 
-    // Check if connected to correct chain
+    // Check if connected to any chain
     const chainConnected = localStorage.getItem('chainConnected') === 'true';
     if (!chainConnected) {
       toast({
-        title: "Wrong Network",
-        description: "Please connect to the LeoFi Prediction Chain",
+        title: "No Network Connected",
+        description: "Please connect to a blockchain network via MetaMask",
         variant: "destructive",
       });
       return;
@@ -72,9 +72,12 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       setTxHash(result.txHash);
       setTxStatus('confirmed');
       
+      // Get chain name for better user experience
+      const chainName = localStorage.getItem('chainName') || 'blockchain';
+      
       toast({
         title: "Transaction Confirmed",
-        description: `Your ${position.toUpperCase()} prediction for ${amount} LEO has been placed on-chain`,
+        description: `Your ${position.toUpperCase()} prediction for ${amount} LEO has been placed on ${chainName}`,
       });
       
       setAmount('');
