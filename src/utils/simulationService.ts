@@ -149,7 +149,6 @@ const simulateTransaction = async (action: string, details: any): Promise<Transa
   }
 };
 
-// Add the missing functions that were causing TypeScript errors
 const simulatePlacePrediction = async (
   walletAddress: string,
   marketId: string,
@@ -267,6 +266,7 @@ const simulateClaimRewards = async (
   }
 };
 
+// Export all functions through the SimulationService object
 export const SimulationService = {
   simulateMarketCreation,
   simulateTrade,
@@ -276,12 +276,12 @@ export const SimulationService = {
   simulateClaimRewards
 };
 
-// For easier imports in components
-export const {
+// Export individual functions for direct imports
+export {
   simulateMarketCreation,
   simulateTrade,
   simulateMarketSettlement,
   simulateTransaction,
   simulatePlacePrediction,
   simulateClaimRewards
-} = SimulationService;
+};
