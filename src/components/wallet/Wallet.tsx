@@ -10,6 +10,8 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Loader2, ChevronDown, ExternalLink, LogOut, Wallet as WalletIcon } from 'lucide-react';
+import { ethers } from 'ethers';
+import { checkSupportedChain, getChainDetails, formatAddress } from '@/utils/contractHelpers';
 
 // Supported wallet types
 type WalletProvider = 'metamask' | 'walletconnect' | 'coinbase';
@@ -44,11 +46,22 @@ const SUPPORTED_CHAINS: Record<string, ChainInfo> = {
     id: '0xa86a',
     name: 'Avalanche',
     nativeCurrency: { name: 'AVAX', symbol: 'AVAX', decimals: 18 }
+  },
+  '0x13881': { 
+    id: '0x13881', 
+    name: 'Mumbai Testnet',
+    nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 }
+  },
+  '0xa869': {
+    id: '0xa869',
+    name: 'Avalanche Fuji',
+    nativeCurrency: { name: 'AVAX', symbol: 'AVAX', decimals: 18 }
   }
 };
 
 export const Wallet = () => {
   const [address, setAddress] = useState<string | null>(null);
+  const [displayAddress, setDisplayAddress] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [walletProvider, setWalletProvider] = useState<WalletProvider | null>(null);
   const [chainConnected, setChainConnected] = useState(false);
@@ -56,6 +69,7 @@ export const Wallet = () => {
   const [chainName, setChainName] = useState<string | null>(null);
   const [balance, setBalance] = useState<string | null>(null);
   const [ethBalance, setEthBalance] = useState<string | null>(null);
+  const [explorer, setExplorer] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Check if wallet is already connected when component mounts
@@ -68,14 +82,26 @@ export const Wallet = () => {
     
     if (savedAddress) {
       setAddress(savedAddress);
+      setDisplayAddress(savedAddress); // Set initially, will be updated if ENS is available
       setChainConnected(savedChainStatus);
       setChainId(savedChainId);
       setChainName(savedChainName);
       setWalletProvider(savedProvider);
       
+      // Get chain explorer URL
+      if (savedChainId) {
+        const chainDetails = getChainDetails(savedChainId);
+        setExplorer(chainDetails.explorer);
+      }
+      
       // Get balance if wallet is connected
       if (window.ethereum && savedAddress) {
         getWalletBalances(savedAddress);
+        
+        // Try to resolve ENS name if connected to Ethereum mainnet
+        if (savedChainId === '0x1') {
+          resolveEnsName(savedAddress);
+        }
       }
     }
 
@@ -95,6 +121,25 @@ export const Wallet = () => {
     };
   }, []);
 
+  // Resolve ENS name if available
+  const resolveEnsName = async (walletAddress: string) => {
+    try {
+      if (window.ethereum) {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const ensName = await provider.lookupAddress(walletAddress);
+        if (ensName) {
+          setDisplayAddress(ensName);
+          return;
+        }
+      }
+      // If no ENS name or error, use formatted address
+      setDisplayAddress(formatAddress(walletAddress));
+    } catch (error) {
+      console.error("Error resolving ENS name:", error);
+      setDisplayAddress(formatAddress(walletAddress));
+    }
+  };
+
   const handleAccountsChanged = async (accounts: string[]) => {
     if (accounts.length === 0) {
       // User disconnected their wallet
@@ -105,6 +150,13 @@ export const Wallet = () => {
       setAddress(newAccount);
       localStorage.setItem('walletAddress', newAccount);
       
+      // Try to resolve ENS name
+      if (chainId === '0x1') {
+        await resolveEnsName(newAccount);
+      } else {
+        setDisplayAddress(formatAddress(newAccount));
+      }
+      
       // Check if user already exists in database, create if not
       await checkOrCreateUser(newAccount);
       
@@ -113,7 +165,7 @@ export const Wallet = () => {
       
       toast({
         title: "Account Changed",
-        description: `Switched to ${newAccount.substring(0, 6)}...${newAccount.substring(newAccount.length - 4)}`,
+        description: `Switched to ${formatAddress(newAccount)}`,
       });
     }
   };
@@ -133,14 +185,25 @@ export const Wallet = () => {
         localStorage.setItem('chainId', chainIdHex);
         
         // Get chain information from our supported chains or from the wallet
-        const chainInfo = SUPPORTED_CHAINS[chainIdHex];
-        let chainName = chainInfo ? chainInfo.name : 'Unknown Network';
+        const chainInfo = SUPPORTED_CHAINS[chainIdHex] || {
+          name: 'Unknown Network',
+          nativeCurrency: { symbol: 'ETH', name: 'Ether', decimals: 18 }
+        };
         
-        // Try to get native currency symbol from chain data
-        let nativeCurrency = chainInfo?.nativeCurrency || { symbol: 'ETH' };
+        // Get chain details including explorer URL
+        const chainDetails = getChainDetails(chainIdHex);
+        setExplorer(chainDetails.explorer);
         
+        const chainName = chainInfo.name;
         setChainName(chainName);
         localStorage.setItem('chainName', chainName);
+        
+        // If Ethereum mainnet, try to resolve ENS name
+        if (chainIdHex === '0x1' && address) {
+          await resolveEnsName(address);
+        } else if (address) {
+          setDisplayAddress(formatAddress(address));
+        }
         
         // Fetch updated balance for the new chain
         if (address) {
@@ -223,13 +286,14 @@ export const Wallet = () => {
       
       // Set chain as connected
       setChainConnected(true);
-      setChainId(chainIdHex);
+      setChainId(chainIdHex as string);
       localStorage.setItem('chainConnected', 'true');
-      localStorage.setItem('chainId', chainIdHex);
+      localStorage.setItem('chainId', chainIdHex as string);
       
       // Try to get chain name
-      const chainInfo = SUPPORTED_CHAINS[chainIdHex as string];
-      const chainName = chainInfo ? chainInfo.name : 'Connected Chain';
+      const chainDetails = getChainDetails(chainIdHex as string);
+      const chainName = chainDetails.name;
+      setExplorer(chainDetails.explorer);
       
       setChainName(chainName);
       localStorage.setItem('chainName', chainName);
@@ -244,9 +308,17 @@ export const Wallet = () => {
       await checkOrCreateUser(userAddress);
       
       setAddress(userAddress);
+      
+      // Try to resolve ENS name if on Ethereum mainnet
+      if (chainIdHex === '0x1') {
+        await resolveEnsName(userAddress);
+      } else {
+        setDisplayAddress(formatAddress(userAddress));
+      }
+      
       toast({
         title: "Wallet Connected",
-        description: `Connected to ${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)} on ${chainName}`,
+        description: `Connected to ${displayAddress || formatAddress(userAddress)} on ${chainName}`,
       });
     } catch (error: any) {
       toast({
@@ -282,12 +354,14 @@ export const Wallet = () => {
     localStorage.removeItem('walletProvider');
     
     setAddress(null);
+    setDisplayAddress(null);
     setChainConnected(false);
     setChainId(null);
     setChainName(null);
     setWalletProvider(null);
     setBalance(null);
     setEthBalance(null);
+    setExplorer(null);
     
     toast({
       title: "Wallet Disconnected",
@@ -297,33 +371,9 @@ export const Wallet = () => {
 
   // Open account on blockchain explorer
   const openBlockchainExplorer = () => {
-    if (!address || !chainId) return;
+    if (!address || !explorer) return;
     
-    let explorerUrl = '';
-    
-    switch (chainId) {
-      case '0x1': // Ethereum Mainnet
-        explorerUrl = `https://etherscan.io/address/${address}`;
-        break;
-      case '0x5': // Goerli Testnet
-        explorerUrl = `https://goerli.etherscan.io/address/${address}`;
-        break;
-      case '0x89': // Polygon
-        explorerUrl = `https://polygonscan.com/address/${address}`;
-        break;
-      case '0xa86a': // Avalanche
-        explorerUrl = `https://snowtrace.io/address/${address}`;
-        break;
-      default:
-        toast({
-          title: "Explorer Not Available",
-          description: "Block explorer not available for this chain",
-          variant: "destructive",
-        });
-        return;
-    }
-    
-    window.open(explorerUrl, '_blank');
+    window.open(`${explorer}/address/${address}`, '_blank');
   };
 
   if (address) {
@@ -332,8 +382,10 @@ export const Wallet = () => {
         {balance && (
           <div className="px-3 py-1 rounded-md bg-gradient-to-r from-purple-600 to-purple-800 text-white">
             <p className="text-sm font-medium">{balance} LEO</p>
-            {ethBalance && (
-              <p className="text-xs opacity-80">{ethBalance} {chainId && SUPPORTED_CHAINS[chainId]?.nativeCurrency.symbol || 'ETH'}</p>
+            {ethBalance && chainId && (
+              <p className="text-xs opacity-80">
+                {ethBalance} {SUPPORTED_CHAINS[chainId]?.nativeCurrency.symbol || 'ETH'}
+              </p>
             )}
           </div>
         )}
@@ -346,7 +398,7 @@ export const Wallet = () => {
             >
               <div className="flex items-center">
                 <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
-                <span className="mr-1">{`${address.substring(0, 6)}...${address.substring(address.length - 4)}`}</span>
+                <span className="mr-1">{displayAddress}</span>
                 <ChevronDown size={16} />
               </div>
             </Button>
@@ -357,10 +409,12 @@ export const Wallet = () => {
                 Connected to {chainName}
               </div>
             )}
-            <DropdownMenuItem onClick={openBlockchainExplorer} className="cursor-pointer">
-              <ExternalLink size={16} className="mr-2" />
-              View on Explorer
-            </DropdownMenuItem>
+            {explorer && (
+              <DropdownMenuItem onClick={openBlockchainExplorer} className="cursor-pointer">
+                <ExternalLink size={16} className="mr-2" />
+                View on Explorer
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={disconnectWallet} className="cursor-pointer text-red-600">
               <LogOut size={16} className="mr-2" />
               Disconnect Wallet

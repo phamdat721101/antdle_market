@@ -11,9 +11,19 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { ArrowDownUp, AlertCircle, CheckCircle, ArrowRight } from 'lucide-react';
+import { ArrowDownUp, AlertCircle, CheckCircle, ArrowRight, ExternalLink } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ethers } from 'ethers';
+import { 
+  PREDICTION_CONTRACT_ADDRESS, 
+  PREDICTION_CONTRACT_ABI,
+  checkSupportedChain,
+  getChainDetails,
+  getSigner,
+  getPredictionContract,
+  mapMarketIdToCampaignId,
+  formatAddress
+} from '@/utils/contractHelpers';
 
 interface TradeFormProps {
   marketId: string;
@@ -21,15 +31,6 @@ interface TradeFormProps {
   strikePrice: number;
   onSuccess: () => void;
 }
-
-// Simplified ABI for on-chain prediction markets
-const PREDICTION_CONTRACT_ABI = [
-  "function placePrediction(string marketId, bool isYesPrediction, uint256 amount) external returns (bool)",
-  "function swapTokens(uint256 amount) external payable returns (uint256)"
-];
-
-// This would be your deployed contract address in a real application
-const PREDICTION_CONTRACT_ADDRESS = "0xPredictionContractAddressWouldGoHere";
 
 export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: TradeFormProps) => {
   const [position, setPosition] = useState<'yes' | 'no'>('yes');
@@ -47,6 +48,7 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
   const [walletConnecting, setWalletConnecting] = useState(false);
+  const [explorer, setExplorer] = useState('');
   const { toast } = useToast();
 
   // Check wallet connection and balance on mount
@@ -56,12 +58,18 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       const chainId = localStorage.getItem('chainId');
       
       if (chainId) {
+        // Get chain details
+        const chainDetails = getChainDetails(chainId);
+        setExplorer(chainDetails.explorer);
+        
         // Get native token symbol based on chain
         switch (chainId) {
           case '0x89':
+          case '0x13881':
             setNativeToken('MATIC');
             break;
           case '0xa86a':
+          case '0xa869':
             setNativeToken('AVAX');
             break;
           default:
@@ -137,6 +145,16 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       // Get current chain ID
       const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
       
+      // Check if chain is supported
+      if (!checkSupportedChain(chainIdHex as string)) {
+        toast({
+          title: "Unsupported Network",
+          description: "Please connect to a supported network to continue.",
+          variant: "destructive",
+        });
+        // Don't return here, let the user continue with an unsupported chain if they want
+      }
+      
       // Set up ethers provider and signer
       const ethProvider = new ethers.BrowserProvider(window.ethereum);
       setProvider(ethProvider);
@@ -146,19 +164,21 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       // Save to localStorage for app-wide access
       localStorage.setItem('walletAddress', userAddress);
       localStorage.setItem('chainConnected', 'true');
-      localStorage.setItem('chainId', chainIdHex);
+      localStorage.setItem('chainId', chainIdHex as string);
       
       // Try to get chain name
-      const network = await ethProvider.getNetwork();
-      const chainName = network.name || 'Connected Chain';
-      localStorage.setItem('chainName', chainName);
+      const chainDetails = getChainDetails(chainIdHex as string);
+      localStorage.setItem('chainName', chainDetails.name);
+      setExplorer(chainDetails.explorer);
       
       // Set native token based on chain
       switch (chainIdHex) {
         case '0x89':
+        case '0x13881':
           setNativeToken('MATIC');
           break;
         case '0xa86a':
+        case '0xa869':
           setNativeToken('AVAX');
           break;
         default:
@@ -167,7 +187,7 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       
       toast({
         title: "Wallet Connected",
-        description: `Connected to ${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`,
+        description: `Connected to ${formatAddress(userAddress)} on ${chainDetails.name}`,
       });
       
       // For demo, set simulated LEO balance
@@ -228,20 +248,23 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       if (window.ethereum && signer) {
         try {
           // Interface with the smart contract
-          const contract = new ethers.Contract(
-            PREDICTION_CONTRACT_ADDRESS, 
-            PREDICTION_CONTRACT_ABI, 
-            signer
-          );
+          const contract = getPredictionContract(signer);
           
           // Convert amount to Wei (or appropriate units)
           const amountBigInt = ethers.parseUnits(amount, 18);
           
+          // Map external market ID to on-chain campaign ID
+          const campaignId = mapMarketIdToCampaignId(marketId);
+          
+          // On-chain outcome: 0 for Yes, 1 for No
+          const outcomeIndex = position === 'yes' ? 0 : 1;
+          
           // Call the contract function
-          const tx = await contract.placePrediction(
-            marketId,
-            position === 'yes', // true for yes, false for no
-            amountBigInt
+          const tx = await contract.deposit(
+            campaignId,
+            outcomeIndex,
+            amountBigInt,
+            { gasLimit: 200000 }
           );
           
           // Set pending transaction hash
@@ -255,7 +278,7 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
           // Wait for transaction confirmation
           const receipt = await tx.wait();
           
-          if (receipt.status === 1) {
+          if (receipt && receipt.status === 1) {
             setTxStatus('confirmed');
             
             // Update local state and LEO balance
@@ -344,11 +367,7 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       if (window.ethereum && signer) {
         try {
           // Interface with the swap contract
-          const contract = new ethers.Contract(
-            PREDICTION_CONTRACT_ADDRESS, 
-            PREDICTION_CONTRACT_ABI, 
-            signer
-          );
+          const contract = getPredictionContract(signer);
           
           // Convert amount to Wei
           const amountInWei = ethers.parseEther(swapAmount);
@@ -356,7 +375,7 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
           // Call the swap function with ETH value
           const tx = await contract.swapTokens(
             amountInWei, 
-            { value: amountInWei }
+            { value: amountInWei, gasLimit: 200000 }
           );
           
           toast({
@@ -367,7 +386,7 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
           // Wait for transaction confirmation
           const receipt = await tx.wait();
           
-          if (receipt.status === 1) {
+          if (receipt && receipt.status === 1) {
             // Transaction successful
             // Get chain name for better user experience
             const chainName = localStorage.getItem('chainName') || 'blockchain';
@@ -443,6 +462,13 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       );
     }
     return null;
+  };
+
+  // View transaction on block explorer
+  const viewTransaction = () => {
+    if (txHash && explorer) {
+      window.open(`${explorer}/tx/${txHash}`, '_blank');
+    }
   };
 
   return (
@@ -530,11 +556,32 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
           )}
           
           {txStatus === 'pending' && txHash && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md flex justify-between items-center">
               <p className="text-sm flex items-center">
                 <span className="inline-block h-2 w-2 bg-blue-600 rounded-full animate-pulse mr-2"></span>
-                Transaction pending: {txHash.substring(0, 6)}...{txHash.substring(txHash.length - 4)}
+                Transaction pending
               </p>
+              {explorer && (
+                <Button variant="link" onClick={viewTransaction} className="text-blue-600 p-0">
+                  <ExternalLink size={14} className="mr-1" />
+                  View
+                </Button>
+              )}
+            </div>
+          )}
+          
+          {txStatus === 'confirmed' && txHash && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-md flex justify-between items-center">
+              <p className="text-sm flex items-center text-green-700">
+                <CheckCircle size={16} className="mr-2" />
+                Transaction confirmed
+              </p>
+              {explorer && (
+                <Button variant="link" onClick={viewTransaction} className="text-green-600 p-0">
+                  <ExternalLink size={14} className="mr-1" />
+                  View
+                </Button>
+              )}
             </div>
           )}
           
@@ -543,7 +590,14 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
             className="w-full bg-orange-600 hover:bg-orange-700" 
             disabled={isSubmitting || !hasBalance || !localStorage.getItem('walletAddress')}
           >
-            {isSubmitting ? 'Processing On-Chain...' : 'Place On-Chain Prediction'}
+            {isSubmitting ? (
+              <>
+                <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
+                Processing On-Chain...
+              </>
+            ) : (
+              'Place On-Chain Prediction'
+            )}
           </Button>
         </form>
       </TabsContent>
