@@ -17,6 +17,8 @@ interface Market {
   no_pool: number;
   status: string;
   description?: string;
+  on_chain_id?: string;
+  creator_address?: string;
 }
 
 const MarketsList = () => {
@@ -36,6 +38,8 @@ const MarketsList = () => {
         query.eq('status', 'active');
       } else if (activeTab === 'settled') {
         query.eq('status', 'settled');
+      } else if (activeTab === 'on-chain') {
+        query.not('on_chain_id', 'is', null);
       }
       
       const { data, error } = await query.order('creation_timestamp', { ascending: false });
@@ -85,6 +89,7 @@ const MarketsList = () => {
           <TabsList>
             <TabsTrigger value="active">Active Markets</TabsTrigger>
             <TabsTrigger value="settled">Settled Markets</TabsTrigger>
+            <TabsTrigger value="on-chain">On-Chain Markets</TabsTrigger>
             <TabsTrigger value="all">All Markets</TabsTrigger>
           </TabsList>
         </Tabs>
