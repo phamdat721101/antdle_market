@@ -5,11 +5,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { TransactionStatusResult, TransactionDetails } from './typeHelpers';
 
 const generateRandomMarketData = () => {
+  // Fixed faker function calls that were causing TypeScript errors
   const assetName = faker.finance.currencyName();
-  const strikePrice = parseFloat(faker.finance.amount(10, 200, 2));
+  const strikePrice = parseFloat(faker.finance.amount({ min: 10, max: 200, dec: 2 }));
   const expiryTimestamp = faker.date.future().toISOString();
-  const yesPool = parseFloat(faker.finance.amount(100, 1000, 2));
-  const noPool = parseFloat(faker.finance.amount(100, 1000, 2));
+  const yesPool = parseFloat(faker.finance.amount({ min: 100, max: 1000, dec: 2 }));
+  const noPool = parseFloat(faker.finance.amount({ min: 100, max: 1000, dec: 2 }));
   const status = faker.helpers.arrayElement(['active', 'settled']);
   const description = faker.lorem.sentence();
 
@@ -126,8 +127,8 @@ const simulateTransaction = async (action: string, details: any): Promise<Transa
     hash: faker.string.alphanumeric(42),
     from: faker.finance.ethereumAddress(),
     to: faker.finance.ethereumAddress(),
-    value: faker.finance.amount(0.001, 1, 10),
-    gasUsed: faker.finance.amount(21000, 100000, 0),
+    value: faker.finance.amount({ min: 0.001, max: 1, dec: 10 }),
+    gasUsed: faker.number.int({ min: 21000, max: 100000 }).toString(),
     blockNumber: faker.number.int({ min: 1000000, max: 2000000 }),
     timestamp: faker.date.recent().toISOString(),
     action,
@@ -266,7 +267,7 @@ const simulateClaimRewards = async (
   }
 };
 
-// Export all functions through the SimulationService object
+// Export both the SimulationService object and individual functions
 export const SimulationService = {
   simulateMarketCreation,
   simulateTrade,
