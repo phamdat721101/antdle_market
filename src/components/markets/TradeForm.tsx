@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { simulatePlacePrediction } from '@/utils/simulationService';
 import {
   Tabs,
   TabsContent,
@@ -23,7 +22,7 @@ interface TradeFormProps {
   onSuccess: () => void;
 }
 
-// Simplified ABI for simulation purposes
+// Simplified ABI for on-chain prediction markets
 const PREDICTION_CONTRACT_ABI = [
   "function placePrediction(string marketId, bool isYesPrediction, uint256 amount) external returns (bool)",
   "function swapTokens(uint256 amount) external payable returns (uint256)"
@@ -117,8 +116,7 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       return;
     }
     
-    // Simulate price calculation - in real app, this would be a price feed or DEX quote
-    // For demo, we'll use a simple 10:1 ratio (1 ETH = 10 LEO)
+    // Token swap rate calculation
     const amountValue = parseFloat(swapAmount);
     const estimatedAmount = (amountValue * 10).toFixed(2);
     setEstimatedLeo(estimatedAmount);
@@ -226,10 +224,10 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
     setIsSubmitting(true);
     setTxStatus('pending');
     try {
-      // If we have an actual web3 connection, try to use it
+      // Execute the on-chain transaction
       if (window.ethereum && signer) {
         try {
-          // In a real app, we'd interface with an actual smart contract
+          // Interface with the smart contract
           const contract = new ethers.Contract(
             PREDICTION_CONTRACT_ADDRESS, 
             PREDICTION_CONTRACT_ABI, 
@@ -248,6 +246,11 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
           
           // Set pending transaction hash
           setTxHash(tx.hash);
+          
+          toast({
+            title: "Transaction Submitted",
+            description: `Your transaction has been submitted to the blockchain. It may take a few moments to confirm.`,
+          });
           
           // Wait for transaction confirmation
           const receipt = await tx.wait();
@@ -279,13 +282,14 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
             description: error.message || "Failed to place prediction on-chain",
             variant: "destructive",
           });
-          
-          // Fall back to simulation if on-chain transaction fails
-          fallbackToSimulation(walletAddress);
         }
       } else {
-        // Fall back to simulation if no web3 connection
-        fallbackToSimulation(walletAddress);
+        toast({
+          title: "Wallet Not Available",
+          description: "Please make sure your wallet is properly connected",
+          variant: "destructive",
+        });
+        setTxStatus('failed');
       }
     } catch (error: any) {
       console.error("Transaction error:", error);
@@ -297,48 +301,6 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       });
     } finally {
       setIsSubmitting(false);
-    }
-  };
-  
-  // Fallback to simulation if actual transaction fails
-  const fallbackToSimulation = async (walletAddress: string) => {
-    try {
-      // Simulate on-chain transaction
-      const amountValue = parseFloat(amount);
-      const result = await simulatePlacePrediction(
-        walletAddress,
-        marketId,
-        position,
-        amountValue
-      );
-      
-      setTxHash(result.txHash);
-      setTxStatus('confirmed');
-      
-      // Get chain name for better user experience
-      const chainName = localStorage.getItem('chainName') || 'blockchain';
-      
-      toast({
-        title: "Transaction Confirmed (Simulated)",
-        description: `Your ${position.toUpperCase()} prediction for ${amount} LEO has been placed on ${chainName}`,
-      });
-      
-      // Update simulated LEO balance
-      const newBalance = (parseFloat(leoBalance) - amountValue).toFixed(2);
-      setLeoBalance(newBalance);
-      localStorage.setItem('leoBalance', newBalance);
-      
-      setAmount('');
-      onSuccess();
-    } catch (error: any) {
-      console.error("Simulation error:", error);
-      setTxStatus('failed');
-      
-      toast({
-        title: "Transaction Failed",
-        description: error.message || "Failed to place prediction (simulation)",
-        variant: "destructive",
-      });
     }
   };
 
@@ -381,7 +343,7 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
     try {
       if (window.ethereum && signer) {
         try {
-          // In a real app, we'd interface with an actual DEX contract
+          // Interface with the swap contract
           const contract = new ethers.Contract(
             PREDICTION_CONTRACT_ADDRESS, 
             PREDICTION_CONTRACT_ABI, 
@@ -396,6 +358,11 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
             amountInWei, 
             { value: amountInWei }
           );
+          
+          toast({
+            title: "Swap Transaction Submitted",
+            description: `Your token swap has been submitted to the blockchain. It may take a few moments to confirm.`,
+          });
           
           // Wait for transaction confirmation
           const receipt = await tx.wait();
@@ -433,13 +400,13 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
             description: error.message || "Failed to swap tokens on-chain",
             variant: "destructive",
           });
-          
-          // Fall back to simulated swap
-          simulateSwap();
         }
       } else {
-        // Fall back to simulated swap
-        simulateSwap();
+        toast({
+          title: "Wallet Not Available",
+          description: "Please make sure your wallet is properly connected",
+          variant: "destructive",
+        });
       }
     } catch (error: any) {
       toast({
@@ -449,36 +416,6 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       });
     } finally {
       setIsSwapping(false);
-    }
-  };
-  
-  const simulateSwap = async () => {
-    try {
-      // Simulate swap delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Get chain name for better user experience
-      const chainName = localStorage.getItem('chainName') || 'blockchain';
-      
-      toast({
-        title: "Swap Successful (Simulated)",
-        description: `Successfully swapped ${swapAmount} ${nativeToken} for ${estimatedLeo} LEO on ${chainName}`,
-      });
-      
-      // Update simulated LEO balance
-      const newBalance = (parseFloat(leoBalance) + parseFloat(estimatedLeo)).toFixed(2);
-      setLeoBalance(newBalance);
-      localStorage.setItem('leoBalance', newBalance);
-      setHasBalance(true);
-      
-      // Clear form
-      setSwapAmount('');
-      setEstimatedLeo('0');
-      
-      // Switch to predict tab
-      setActiveTab('predict');
-    } catch (error) {
-      console.error("Simulation error:", error);
     }
   };
 
