@@ -12,6 +12,12 @@ export const PREDICTION_CONTRACT_ABI = [
   "event CampaignCreated(uint256 indexed id, address indexed creator, string description, uint256 endTime)",
 ];
 
+// Standard ERC20 Token ABI for approval function
+export const ERC20_ABI = [
+  "function approve(address spender, uint256 amount) external returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)"
+];
+
 // This would be your deployed contract address in a real application
 export const PREDICTION_CONTRACT_ADDRESS = "0x42a2F4e5389F6e7466D97408724Dba38812f184E";
 // Default token address to use for markets (this would be your platform token in a real application)
@@ -58,6 +64,11 @@ export const getSigner = async (provider: ethers.BrowserProvider): Promise<ether
 // Create contract instance with signer
 export const getPredictionContract = (signer: ethers.Signer): ethers.Contract => {
   return new ethers.Contract(PREDICTION_CONTRACT_ADDRESS, PREDICTION_CONTRACT_ABI, signer);
+};
+
+// Get token contract instance
+export const getTokenContract = (tokenAddress: string, signer: ethers.Signer): ethers.Contract => {
+  return new ethers.Contract(tokenAddress, ERC20_ABI, signer);
 };
 
 // Get on-chain campaign ID from the database on_chain_id field

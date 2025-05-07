@@ -16,10 +16,13 @@ import { ethers } from 'ethers';
 import { 
   PREDICTION_CONTRACT_ADDRESS, 
   PREDICTION_CONTRACT_ABI,
+  DEFAULT_TOKEN_ADDRESS,
+  ERC20_ABI,
   checkSupportedChain,
   getChainDetails,
   getSigner,
   getPredictionContract,
+  getTokenContract,
   getOnChainIdFromSupabase,
   formatAddress
 } from '@/utils/contractHelpers';
@@ -39,9 +42,10 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess, onChain
   const [swapAmount, setSwapAmount] = useState('');
   const [estimatedLeo, setEstimatedLeo] = useState('0');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
-  const [txStatus, setTxStatus] = useState<'pending' | 'confirmed' | 'failed' | null>(null);
+  const [txStatus, setTxStatus] = useState<'approving' | 'pending' | 'confirmed' | 'failed' | null>(null);
   const [activeTab, setActiveTab] = useState('predict');
   const [hasBalance, setHasBalance] = useState(false);
   const [leoBalance, setLeoBalance] = useState('0');
@@ -301,13 +305,48 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess, onChain
           // Convert amount to Wei (or appropriate units)
           const amountBigInt = ethers.parseUnits(amount, 18);
           
-          // Use the actual on-chain campaign ID from state
+          // Get the campaign to retrieve the token address
           console.log(`Using campaign ID: ${campaignId}`);
           
           // On-chain outcome: 0 for Yes, 1 for No
           const outcomeIndex = position === 'yes' ? 0 : 1;
           
-          // Call the contract function with the actual campaign ID
+          // First, approve the token spending
+          setTxStatus('approving');
+          
+          // Get token contract - in a real app, you would get this from the campaign info
+          // For demo we'll use the default token address
+          const tokenContract = getTokenContract(DEFAULT_TOKEN_ADDRESS, signer);
+          
+          toast({
+            title: "Approving Token Transfer",
+            description: "Please confirm the token approval transaction in your wallet...",
+          });
+          
+          // Call the approve function on token contract
+          const approveTx = await tokenContract.approve(
+            PREDICTION_CONTRACT_ADDRESS,
+            amountBigInt,
+            { gasLimit: 200000 }
+          );
+          
+          // Set pending transaction hash for approval
+          setTxHash(approveTx.hash);
+          
+          // Wait for approval transaction confirmation
+          const approveReceipt = await approveTx.wait();
+          
+          if (!approveReceipt || approveReceipt.status !== 1) {
+            throw new Error("Token approval failed");
+          }
+          
+          toast({
+            title: "Token Approval Confirmed",
+            description: "Now placing your prediction on-chain...",
+          });
+          
+          // Now call the deposit function
+          setTxStatus('pending');
           const tx = await contract.deposit(
             campaignId, // Use the campaign ID from state
             outcomeIndex,
@@ -320,7 +359,7 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess, onChain
           
           toast({
             title: "Transaction Submitted",
-            description: `Your transaction has been submitted to the blockchain. It may take a few moments to confirm.`,
+            description: `Your prediction transaction has been submitted to the blockchain. It may take a few moments to confirm.`,
           });
           
           // Wait for transaction confirmation
@@ -617,6 +656,21 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess, onChain
             </Alert>
           )}
           
+          {txStatus === 'approving' && txHash && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md flex justify-between items-center">
+              <p className="text-sm flex items-center">
+                <span className="inline-block h-2 w-2 bg-blue-600 rounded-full animate-pulse mr-2"></span>
+                Approving token spending
+              </p>
+              {explorer && (
+                <Button variant="link" onClick={viewTransaction} className="text-blue-600 p-0">
+                  <ExternalLink size={14} className="mr-1" />
+                  View
+                </Button>
+              )}
+            </div>
+          )}
+          
           {txStatus === 'pending' && txHash && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-md flex justify-between items-center">
               <p className="text-sm flex items-center">
@@ -655,7 +709,7 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess, onChain
             {isSubmitting ? (
               <>
                 <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
-                Processing On-Chain...
+                {txStatus === 'approving' ? 'Approving Token Transfer...' : 'Processing On-Chain...'}
               </>
             ) : (
               'Place On-Chain Prediction'
