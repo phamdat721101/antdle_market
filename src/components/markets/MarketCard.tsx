@@ -4,6 +4,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { formatDistance } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
 
 interface MarketCardProps {
   id: string;
@@ -14,6 +15,7 @@ interface MarketCardProps {
   noPool: number;
   status: string;
   description?: string;
+  onChainId?: string;
 }
 
 export const MarketCard = ({
@@ -24,7 +26,8 @@ export const MarketCard = ({
   yesPool,
   noPool,
   status,
-  description
+  description,
+  onChainId
 }: MarketCardProps) => {
   const totalPool = yesPool + noPool;
   const yesPercentage = totalPool > 0 ? (yesPool / totalPool) * 100 : 50;
@@ -39,9 +42,14 @@ export const MarketCard = ({
       <CardHeader className="bg-gradient-to-r from-red-500 to-orange-500 text-white">
         <CardTitle className="text-xl flex justify-between items-center">
           <span>{assetName} {`>`} ${strikePrice.toFixed(2)}</span>
-          <span className={`text-sm px-2 py-1 rounded ${status === 'active' ? 'bg-green-500' : 'bg-gray-500'}`}>
-            {status}
-          </span>
+          <div className="flex items-center space-x-2">
+            {onChainId && (
+              <Badge className="bg-purple-500 mr-1">On-Chain</Badge>
+            )}
+            <span className={`text-sm px-2 py-1 rounded ${status === 'active' ? 'bg-green-500' : 'bg-gray-500'}`}>
+              {status}
+            </span>
+          </div>
         </CardTitle>
         <p className="text-sm text-gray-200">Expires {timeToExpiry}</p>
       </CardHeader>
@@ -72,7 +80,7 @@ export const MarketCard = ({
         <Link to={`/markets/${id}`} className="w-full">
           <Button 
             variant="outline" 
-            className="w-full border-orange-500 text-orange-500 hover:bg-orange-50"
+            className={`w-full ${onChainId ? 'border-purple-500 text-purple-500 hover:bg-purple-50' : 'border-orange-500 text-orange-500 hover:bg-orange-50'}`}
           >
             {isExpired ? 'View Results' : 'Trade Now'}
           </Button>

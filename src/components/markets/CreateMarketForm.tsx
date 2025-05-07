@@ -76,6 +76,9 @@ export const CreateMarketForm = ({ onSuccess }: { onSuccess: () => void }) => {
         parseInt(expiryHours)
       );
       
+      // Get the address of the connected wallet (creator)
+      const creatorAddress = await signer.getAddress();
+      
       // Also store in Supabase for UI purposes
       const expiryTimestamp = new Date(Date.now() + parseInt(expiryHours) * 60 * 60 * 1000).toISOString();
       
@@ -85,8 +88,8 @@ export const CreateMarketForm = ({ onSuccess }: { onSuccess: () => void }) => {
         expiry_timestamp: expiryTimestamp,
         description: marketDescription,
         status: 'active',
-        on_chain_id: campaignId, // Store the on-chain ID
-        creator_address: accounts[0],
+        on_chain_id: campaignId,
+        creator_address: creatorAddress,
       });
 
       if (error) throw error;
@@ -95,6 +98,20 @@ export const CreateMarketForm = ({ onSuccess }: { onSuccess: () => void }) => {
         title: "On-Chain Market Created",
         description: `Your prediction market has been created successfully with campaign ID: ${campaignId}`,
       });
+      
+      // Save the chain info to localStorage for future reference
+      try {
+        const network = await provider.getNetwork();
+        const chainId = network.chainId.toString();
+        const chainName = network.name || 'Unknown Network';
+        localStorage.setItem('chainConnected', 'true');
+        localStorage.setItem('chainId', chainId);
+        localStorage.setItem('chainName', chainName);
+        localStorage.setItem('walletAddress', creatorAddress);
+      } catch (error) {
+        console.warn("Failed to save chain info:", error);
+      }
+      
       return true;
     } catch (error: any) {
       console.error("Error creating on-chain market:", error);

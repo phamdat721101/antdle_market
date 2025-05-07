@@ -80,19 +80,29 @@ export const formatAddress = (address: string): string => {
 // Resolve ENS name regardless of chain (with fallback to formatted address)
 export const resolveNameOrFormatAddress = async (address: string, provider?: ethers.BrowserProvider): Promise<string> => {
   try {
-    // Only try to resolve ENS if we have a provider and are on Ethereum mainnet
+    // Only try to resolve ENS if we have a provider
     if (provider) {
-      const chainId = (await provider.getNetwork()).chainId;
-      // Only attempt ENS lookup on Ethereum mainnet (chainId 1) or Goerli testnet (chainId 5)
-      if (chainId === 1n || chainId === 5n) {
-        try {
-          const ensName = await provider.lookupAddress(address);
-          if (ensName) return ensName;
-        } catch (error) {
-          console.log("ENS lookup failed, using formatted address");
+      try {
+        // Get the network to check if we're on Ethereum mainnet or Goerli
+        const network = await provider.getNetwork();
+        const chainId = network.chainId;
+        
+        // Only attempt ENS lookup on Ethereum mainnet (chainId 1) or Goerli testnet (chainId 5)
+        if (chainId === 1n || chainId === 5n) {
+          try {
+            const ensName = await provider.lookupAddress(address);
+            if (ensName) return ensName;
+          } catch (error) {
+            console.log("ENS lookup failed, using formatted address");
+          }
+        } else {
+          console.log("Not on Ethereum mainnet or Goerli, skipping ENS resolution");
         }
+      } catch (error) {
+        console.log("Error getting network info:", error);
       }
     }
+    
     // Fallback to formatted address
     return formatAddress(address);
   } catch (error) {
@@ -147,7 +157,22 @@ export const createCampaignOnChain = async (
     const receipt = await tx.wait();
     console.log("Transaction confirmed:", receipt.hash);
     
-    // Instead of parsing logs, pull the new total and subtract 1
+    try {
+      // Try to parse the campaign ID from the logs
+      const campaignCreatedLog = receipt.logs
+        .map(log => contract.interface.parseLog(log))
+        .find(log => log && log.name === 'CampaignCreated');
+      
+      if (campaignCreatedLog && campaignCreatedLog.args) {
+        const campaignId = campaignCreatedLog.args[0].toString();
+        console.log("Campaign created with ID (from logs):", campaignId);
+        return campaignId;
+      }
+    } catch (error) {
+      console.warn("Could not parse campaign ID from logs, falling back to alternative method");
+    }
+    
+    // Fallback method: pull the new total and subtract 1
     const totalCampaigns = await contract.numberOfCampaigns();
     const campaignId = (totalCampaigns - 1n).toString();
     console.log("Campaign created with ID (via length):", campaignId);

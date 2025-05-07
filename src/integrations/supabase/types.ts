@@ -129,10 +129,12 @@ export type Database = {
           asset_name: string
           contract_address: string | null
           creation_timestamp: string
+          creator_address: string | null
           description: string | null
           expiry_timestamp: string
           id: string
           no_pool: number
+          on_chain_id: string | null
           settled_price: number | null
           status: string
           strike_price: number
@@ -142,10 +144,12 @@ export type Database = {
           asset_name: string
           contract_address?: string | null
           creation_timestamp?: string
+          creator_address?: string | null
           description?: string | null
           expiry_timestamp: string
           id?: string
           no_pool?: number
+          on_chain_id?: string | null
           settled_price?: number | null
           status?: string
           strike_price: number
@@ -155,10 +159,12 @@ export type Database = {
           asset_name?: string
           contract_address?: string | null
           creation_timestamp?: string
+          creator_address?: string | null
           description?: string | null
           expiry_timestamp?: string
           id?: string
           no_pool?: number
+          on_chain_id?: string | null
           settled_price?: number | null
           status?: string
           strike_price?: number

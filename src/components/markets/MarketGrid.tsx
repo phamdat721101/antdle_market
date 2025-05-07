@@ -11,6 +11,7 @@ interface Market {
   no_pool: number;
   status: string;
   description?: string;
+  on_chain_id?: string;
 }
 
 interface MarketGridProps {
@@ -51,6 +52,7 @@ export const MarketGrid = ({ markets, isLoading }: MarketGridProps) => {
           noPool={Number(market.no_pool)}
           status={market.status}
           description={market.description}
+          onChainId={market.on_chain_id}
         />
       ))}
     </div>
