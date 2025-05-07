@@ -1,4 +1,3 @@
-
 import { ethers } from "ethers";
 
 // Prediction Market Contract ABI (simplified for the functions we need)
@@ -10,6 +9,7 @@ export const PREDICTION_CONTRACT_ABI = [
   "function getCampaign(uint256 campaignId) view returns (address creator, string description, uint256 endTime, uint256 creatorFeeBP, bool resolved, uint256 winningOutcome, address tokenAddress, uint256 totalPool, uint256[] outcomePools)",
   "function createCampaign(string description, uint256 endTime, bytes32[] outcomes, address tokenAddress, uint256 creatorFeeBP) external returns (uint256)",
   "function numberOfCampaigns() view returns (uint256)",
+  "event CampaignCreated(uint256 indexed id, address indexed creator, string description, uint256 endTime)",
 ];
 
 // This would be your deployed contract address in a real application
@@ -58,6 +58,34 @@ export const getSigner = async (provider: ethers.BrowserProvider): Promise<ether
 // Create contract instance with signer
 export const getPredictionContract = (signer: ethers.Signer): ethers.Contract => {
   return new ethers.Contract(PREDICTION_CONTRACT_ADDRESS, PREDICTION_CONTRACT_ABI, signer);
+};
+
+// Get on-chain campaign ID from the database on_chain_id field
+export const getOnChainCampaignId = async (
+  marketId: string, 
+  provider: ethers.BrowserProvider | null
+): Promise<string | null> => {
+  try {
+    // First, try to get on_chain_id from the database via API
+    const response = await fetch(`/api/markets/${marketId}`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.on_chain_id) {
+        return data.on_chain_id;
+      }
+    }
+
+    // Fallback to localStorage (for demo purposes)
+    const storedId = localStorage.getItem(`market_${marketId}_onchain_id`);
+    if (storedId) {
+      return storedId;
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Error getting on-chain campaign ID:", error);
+    return null;
+  }
 };
 
 // Convert external market ID to on-chain campaign ID (for demo)
@@ -160,7 +188,13 @@ export const createCampaignOnChain = async (
     try {
       // Try to parse the campaign ID from the logs
       const campaignCreatedLog = receipt.logs
-        .map(log => contract.interface.parseLog(log))
+        .map(log => {
+          try {
+            return contract.interface.parseLog(log);
+          } catch (e) {
+            return null;
+          }
+        })
         .find(log => log && log.name === 'CampaignCreated');
       
       if (campaignCreatedLog && campaignCreatedLog.args) {
@@ -180,5 +214,18 @@ export const createCampaignOnChain = async (
   } catch (error: any) {
     console.error("Error creating campaign on-chain:", error);
     throw new Error(error.message || "Failed to create campaign on-chain");
+  }
+};
+
+// Function to directly retrieve the on-chain campaign ID from Supabase
+export const getOnChainIdFromSupabase = async (marketId: string) => {
+  try {
+    // For now, we'll simulate this with sessionStorage
+    // In a real implementation, you would query your database
+    const onChainId = sessionStorage.getItem(`market_${marketId}_onchain_id`);
+    return onChainId;
+  } catch (error) {
+    console.error("Error fetching on-chain ID:", error);
+    return null;
   }
 };

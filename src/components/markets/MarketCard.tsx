@@ -52,6 +52,9 @@ export const MarketCard = ({
           </div>
         </CardTitle>
         <p className="text-sm text-gray-200">Expires {timeToExpiry}</p>
+        {onChainId && (
+          <p className="text-xs text-gray-200 mt-1">On-Chain ID: {onChainId}</p>
+        )}
       </CardHeader>
       <CardContent className="pt-4">
         {description && <p className="text-sm text-gray-600 mb-4">{description}</p>}

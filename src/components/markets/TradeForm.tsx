@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,18 +20,20 @@ import {
   getChainDetails,
   getSigner,
   getPredictionContract,
-  mapMarketIdToCampaignId,
+  getOnChainIdFromSupabase,
   formatAddress
 } from '@/utils/contractHelpers';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TradeFormProps {
   marketId: string;
   assetName: string;
   strikePrice: number;
   onSuccess: () => void;
+  onChainId?: string;
 }
 
-export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: TradeFormProps) => {
+export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess, onChainId }: TradeFormProps) => {
   const [position, setPosition] = useState<'yes' | 'no'>('yes');
   const [amount, setAmount] = useState('');
   const [swapAmount, setSwapAmount] = useState('');
@@ -49,7 +50,44 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
   const [walletConnecting, setWalletConnecting] = useState(false);
   const [explorer, setExplorer] = useState('');
+  const [campaignId, setCampaignId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Fetch the on-chain ID when component mounts
+  useEffect(() => {
+    const fetchOnChainId = async () => {
+      try {
+        // If onChainId is provided directly as a prop, use it
+        if (onChainId) {
+          setCampaignId(onChainId);
+          return;
+        }
+
+        // Otherwise, try to fetch from Supabase
+        const { data, error } = await supabase
+          .from('prediction_markets')
+          .select('on_chain_id')
+          .eq('id', marketId)
+          .single();
+
+        if (error) {
+          console.error("Error fetching on-chain ID:", error);
+          return;
+        }
+
+        if (data && data.on_chain_id) {
+          console.log("Found on-chain ID:", data.on_chain_id);
+          setCampaignId(data.on_chain_id);
+        } else {
+          console.log("No on-chain ID found for this market");
+        }
+      } catch (error) {
+        console.error("Error in fetchOnChainId:", error);
+      }
+    };
+
+    fetchOnChainId();
+  }, [marketId, onChainId]);
 
   // Check wallet connection and balance on mount
   useEffect(() => {
@@ -241,6 +279,16 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
       return;
     }
 
+    // Make sure we have a campaign ID
+    if (!campaignId) {
+      toast({
+        title: "Campaign Not Found",
+        description: "This market is not available on-chain",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     setTxStatus('pending');
     try {
@@ -253,18 +301,18 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
           // Convert amount to Wei (or appropriate units)
           const amountBigInt = ethers.parseUnits(amount, 18);
           
-          // Map external market ID to on-chain campaign ID
-          const campaignId = mapMarketIdToCampaignId(marketId);
+          // Use the actual on-chain campaign ID from state
+          console.log(`Using campaign ID: ${campaignId}`);
           
           // On-chain outcome: 0 for Yes, 1 for No
           const outcomeIndex = position === 'yes' ? 0 : 1;
           
-          // Call the contract function
+          // Call the contract function with the actual campaign ID
           const tx = await contract.deposit(
-            campaignId,
+            campaignId, // Use the campaign ID from state
             outcomeIndex,
             amountBigInt,
-            { gasLimit: 200000 }
+            { gasLimit: 300000 }
           );
           
           // Set pending transaction hash
@@ -483,6 +531,11 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
           <div className="p-4 bg-orange-50 rounded-lg border border-orange-100">
             <h3 className="font-medium text-lg mb-2">Market</h3>
             <p>Will {assetName} be above ${strikePrice} at expiry?</p>
+            {campaignId && (
+              <p className="text-xs text-purple-700 mt-2">
+                On-Chain ID: {campaignId}
+              </p>
+            )}
           </div>
           
           {renderConnectWalletButton()}
@@ -537,6 +590,15 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
             </div>
           </div>
           
+          {!campaignId && (
+            <Alert className="bg-amber-50 border-amber-200">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800">
+                This market is not available on-chain.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           {!localStorage.getItem('walletAddress') && (
             <Alert className="bg-purple-50 border-purple-200">
               <AlertCircle className="h-4 w-4 text-purple-600" />
@@ -588,7 +650,7 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess }: Trade
           <Button 
             type="submit" 
             className="w-full bg-orange-600 hover:bg-orange-700" 
-            disabled={isSubmitting || !hasBalance || !localStorage.getItem('walletAddress')}
+            disabled={isSubmitting || !hasBalance || !localStorage.getItem('walletAddress') || !campaignId}
           >
             {isSubmitting ? (
               <>
