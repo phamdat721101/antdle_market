@@ -8,7 +8,8 @@ export const PREDICTION_CONTRACT_ABI = [
   "function deposit(uint256 campaignId, uint256 outcome, uint256 amount) external",
   "function withdraw(uint256 campaignId) external",
   "function getCampaign(uint256 campaignId) view returns (address creator, string description, uint256 endTime, uint256 creatorFeeBP, bool resolved, uint256 winningOutcome, address tokenAddress, uint256 totalPool, uint256[] outcomePools)",
-  "function createCampaign(string description, uint256 endTime, bytes32[] outcomes, address tokenAddress, uint256 creatorFeeBP) external returns (uint256)"
+  "function createCampaign(string description, uint256 endTime, bytes32[] outcomes, address tokenAddress, uint256 creatorFeeBP) external returns (uint256)",
+  "function numberOfCampaigns() view returns (uint256)",
 ];
 
 // This would be your deployed contract address in a real application
@@ -146,24 +147,11 @@ export const createCampaignOnChain = async (
     const receipt = await tx.wait();
     console.log("Transaction confirmed:", receipt.hash);
     
-    // Extract campaign ID from event logs
-    const campaignCreatedEvent = receipt.logs.find((log: any) => {
-      try {
-        const parsedLog = contract.interface.parseLog(log);
-        return parsedLog?.name === "CampaignCreated";
-      } catch (e) {
-        return false;
-      }
-    });
-    
-    if (campaignCreatedEvent) {
-      const parsedLog = contract.interface.parseLog(campaignCreatedEvent);
-      const campaignId = parsedLog?.args[0].toString();
-      console.log("Campaign created with ID:", campaignId);
-      return campaignId;
-    }
-    
-    throw new Error("Campaign ID not found in transaction logs");
+    // Instead of parsing logs, pull the new total and subtract 1
+    const totalCampaigns = await contract.numberOfCampaigns();
+    const campaignId = (totalCampaigns - 1n).toString();
+    console.log("Campaign created with ID (via length):", campaignId);
+    return campaignId;
   } catch (error: any) {
     console.error("Error creating campaign on-chain:", error);
     throw new Error(error.message || "Failed to create campaign on-chain");
