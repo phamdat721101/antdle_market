@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistance } from 'date-fns';
@@ -34,13 +33,15 @@ interface TransactionHistoryProps {
   marketId?: string;
   limit?: number;
   className?: string;
+  hideApprovalTransactions?: boolean;
 }
 
 export const TransactionHistory = ({ 
   walletAddress, 
   marketId,
   limit = 20,
-  className = '' 
+  className = '',
+  hideApprovalTransactions = true 
 }: TransactionHistoryProps) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,6 +78,11 @@ export const TransactionHistory = ({
         if (marketId) {
           query = query.eq('market_id', marketId);
         }
+        
+        // Filter out approval transactions if hideApprovalTransactions is true
+        if (hideApprovalTransactions) {
+          query = query.neq('tx_type', 'approve');
+        }
 
         const { data, error } = await query;
         
@@ -90,7 +96,7 @@ export const TransactionHistory = ({
     };
 
     fetchTransactions();
-  }, [walletAddress, marketId, limit]);
+  }, [walletAddress, marketId, limit, hideApprovalTransactions]);
 
   const formatTimeAgo = (timestamp: string) => {
     return formatDistance(new Date(timestamp), new Date(), { addSuffix: true });

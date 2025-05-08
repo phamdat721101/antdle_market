@@ -1,3 +1,4 @@
+
 import { ethers } from "ethers";
 
 // Prediction Market Contract ABI (simplified for the functions we need)
@@ -15,13 +16,18 @@ export const PREDICTION_CONTRACT_ABI = [
 // Standard ERC20 Token ABI for approval function
 export const ERC20_ABI = [
   "function approve(address spender, uint256 amount) external returns (bool)",
-  "function allowance(address owner, address spender) view returns (uint256)"
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function balanceOf(address account) view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)"
 ];
 
 // This would be your deployed contract address in a real application
 export const PREDICTION_CONTRACT_ADDRESS = "0x42a2F4e5389F6e7466D97408724Dba38812f184E";
-// Default token address to use for markets (this would be your platform token in a real application)
-export const DEFAULT_TOKEN_ADDRESS = "0xA1F002bf7cAD148a639418D77b93912871901875";
+// LEO token address
+export const LEO_TOKEN_ADDRESS = "0xA1F002bf7cAD148a639418D77b93912871901875";
+// Use the LEO token address as default token for markets
+export const DEFAULT_TOKEN_ADDRESS = LEO_TOKEN_ADDRESS;
 
 // Check if the connected wallet is on a supported chain
 export const checkSupportedChain = (chainId: string | null): boolean => {
@@ -38,6 +44,30 @@ export const checkSupportedChain = (chainId: string | null): boolean => {
   ];
   
   return supportedChains.includes(chainId);
+};
+
+// Get token balance for an address
+export const getTokenBalance = async (
+  tokenAddress: string,
+  walletAddress: string,
+  provider: ethers.BrowserProvider | null
+): Promise<string> => {
+  if (!provider || !walletAddress) return "0";
+  
+  try {
+    const signer = await getSigner(provider);
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
+    
+    const balance = await tokenContract.balanceOf(walletAddress);
+    const decimals = await tokenContract.decimals();
+    
+    // Format the balance based on decimals
+    const formattedBalance = ethers.formatUnits(balance, decimals);
+    return parseFloat(formattedBalance).toFixed(2);
+  } catch (error) {
+    console.error("Error getting token balance:", error);
+    return "0";
+  }
 };
 
 // Get chain-specific details like block explorer URL
