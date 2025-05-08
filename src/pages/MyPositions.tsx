@@ -139,10 +139,13 @@ const MyPositions = () => {
       // Simulate claiming rewards on-chain
       const result = await simulateClaimRewards(walletAddress, positionId);
       
+      // Generate a fake transaction hash for recording purposes
+      const txHash = `0x${Math.random().toString(16).substring(2, 64)}`;
+      
       // Save transaction to the database
       const tx = {
         user_wallet_address: walletAddress,
-        tx_hash: result.txHash,
+        tx_hash: txHash,
         tx_type: 'claim',
         market_id: positions.find(p => p.id === positionId)?.market_id,
         amount: result.rewardAmount,

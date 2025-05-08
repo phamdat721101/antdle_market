@@ -198,10 +198,11 @@ const simulatePlacePrediction = async (
   }
 };
 
+// Update the return type to include txHash
 const simulateClaimRewards = async (
   walletAddress: string,
   positionId: string
-): Promise<{ rewardAmount: number }> => {
+): Promise<{ rewardAmount: number; txHash: string }> => {
   try {
     // First check if the position exists and belongs to the user
     const { data: position, error: positionError } = await supabase
@@ -257,9 +258,13 @@ const simulateClaimRewards = async (
     // For demo purposes, just return the position amount multiplied by a random factor
     const rewardMultiplier = faker.number.float({ min: 1.1, max: 2.5 });
     const rewardAmount = Number((position.amount * rewardMultiplier).toFixed(2));
+    
+    // Generate a fake transaction hash
+    const txHash = faker.string.alphanumeric(64).toLowerCase();
 
     return {
-      rewardAmount
+      rewardAmount,
+      txHash
     };
   } catch (error: any) {
     console.error("Claim rewards error:", error);
