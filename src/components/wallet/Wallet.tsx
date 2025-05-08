@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,7 +9,7 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { Loader2, ChevronDown, ExternalLink, LogOut, Wallet as WalletIcon } from 'lucide-react';
+import { Loader2, ChevronDown, ExternalLink, LogOut, Wallet as WalletIcon, LayoutList } from 'lucide-react';
 import { ethers } from 'ethers';
 import { checkSupportedChain, getChainDetails, formatAddress } from '@/utils/contractHelpers';
 
