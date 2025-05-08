@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,7 +24,7 @@ interface Market {
   strike_price: number;
   expiry_timestamp: string;
   status: string;
-  settled_price?: number | null; // Make settled_price optional
+  settled_price?: number | null;
 }
 
 interface Position {
@@ -82,8 +83,18 @@ const MyPositions = () => {
       
       if (error) throw error;
       setPositions(data as Position[]);
+      
+      // Save positions to localStorage for offline access
+      localStorage.setItem('userPositions', JSON.stringify(data));
     } catch (error) {
       console.error('Error fetching positions:', error);
+      
+      // Try to load from localStorage if network request fails
+      const savedPositions = localStorage.getItem('userPositions');
+      if (savedPositions) {
+        setPositions(JSON.parse(savedPositions));
+      }
+      
       toast({
         title: "Error",
         description: "Failed to load your positions",
@@ -128,6 +139,18 @@ const MyPositions = () => {
       // Simulate claiming rewards on-chain
       const result = await simulateClaimRewards(walletAddress, positionId);
       
+      // Save transaction to the database
+      const tx = {
+        user_wallet_address: walletAddress,
+        tx_hash: result.txHash,
+        tx_type: 'claim',
+        market_id: positions.find(p => p.id === positionId)?.market_id,
+        amount: result.rewardAmount,
+        status: 'confirmed'
+      };
+      
+      await supabase.from('user_transactions').insert(tx);
+      
       // Get chain name for better user experience
       const chainName = localStorage.getItem('chainName') || 'blockchain';
       
@@ -135,6 +158,12 @@ const MyPositions = () => {
         title: "Rewards Claimed",
         description: `Successfully claimed ${result.rewardAmount} LEO tokens on ${chainName}`,
       });
+      
+      // Update position claimed status
+      await supabase
+        .from('user_positions')
+        .update({ claimed: true })
+        .eq('id', positionId);
       
       // Refresh positions
       fetchPositions();
@@ -194,29 +223,29 @@ const MyPositions = () => {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">My On-Chain Positions</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">My On-Chain Positions</h1>
         
         {walletAddress ? (
           <>
             <div className="mb-8">
-              <Card>
-                <CardHeader>
+              <Card className="border border-orange-100 dark:border-orange-900 shadow-md">
+                <CardHeader className="bg-secondary/80 dark:bg-secondary/20">
                   <CardTitle>Portfolio Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <p className="text-sm text-gray-500">Total Positions</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Positions</p>
                       <p className="text-2xl font-bold">{positions.length}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Total Value</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Value</p>
                       <p className="text-2xl font-bold">{calculateTotalValue().toFixed(2)} LEO</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Connected Wallet</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Connected Wallet</p>
                       <p className="text-sm font-mono truncate">{walletAddress}</p>
-                      <p className="text-xs text-gray-500">{localStorage.getItem('chainName') || 'Connected Chain'}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{localStorage.getItem('chainName') || 'Connected Chain'}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -225,10 +254,10 @@ const MyPositions = () => {
 
             {isLoading ? (
               <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
               </div>
             ) : positions.length > 0 ? (
-              <Card>
+              <Card className="border border-orange-100 dark:border-orange-900 shadow-md">
                 <CardContent className="p-0">
                   <Table>
                     <TableHeader>
@@ -246,7 +275,7 @@ const MyPositions = () => {
                       {positions.map((position) => (
                         <TableRow key={position.id}>
                           <TableCell>
-                            <Link to={`/markets/${position.market_id}`} className="text-blue-600 hover:underline">
+                            <Link to={`/markets/${position.market_id}`} className="text-primary hover:underline">
                               {position.market.asset_name} {`>`} ${Number(position.market.strike_price).toFixed(2)}
                             </Link>
                           </TableCell>
@@ -269,7 +298,7 @@ const MyPositions = () => {
                              !position.claimed && (
                               <Button 
                                 size="sm" 
-                                className="bg-orange-600 hover:bg-orange-700"
+                                className="bg-primary hover:bg-primary/90"
                                 onClick={() => handleClaimRewards(position.id)}
                                 disabled={claimingId === position.id}
                               >
@@ -294,20 +323,20 @@ const MyPositions = () => {
                 </CardContent>
               </Card>
             ) : (
-              <div className="text-center p-12 bg-gray-50 rounded-lg">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No positions yet</h3>
-                <p className="text-gray-500 mb-6">You haven't made any on-chain predictions yet</p>
+              <div className="text-center p-12 bg-secondary rounded-lg border border-orange-100 dark:border-orange-900">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No positions yet</h3>
+                <p className="text-gray-500 dark:text-gray-400 mb-6">You haven't made any on-chain predictions yet</p>
                 <Link to="/markets">
-                  <Button className="bg-orange-600 hover:bg-orange-700">Browse Markets</Button>
+                  <Button className="bg-primary hover:bg-primary/90">Browse Markets</Button>
                 </Link>
               </div>
             )}
           </>
         ) : (
-          <div className="text-center p-12 bg-gray-50 rounded-lg">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Connect your wallet</h3>
-            <p className="text-gray-500 mb-6">Connect your wallet to view your positions</p>
-            <Button className="bg-orange-600 hover:bg-orange-700">Connect Wallet</Button>
+          <div className="text-center p-12 bg-secondary rounded-lg border border-orange-100 dark:border-orange-900">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Connect your wallet</h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-6">Connect your wallet to view your positions</p>
+            <Button className="bg-primary hover:bg-primary/90">Connect Wallet</Button>
           </div>
         )}
       </div>
