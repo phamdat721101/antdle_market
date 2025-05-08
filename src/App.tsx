@@ -20,18 +20,18 @@ function App() {
     // Only show once per session
     const hasShownWarning = sessionStorage.getItem('demo-warning-shown');
     
-    if (!hasShownWarning) {
-      setTimeout(() => {
-        toast.warning(
-          "Demo Environment",
-          {
-            description: "This is a simulated environment. No real blockchain transactions are performed.",
-            duration: 8000,
-          }
-        );
-        sessionStorage.setItem('demo-warning-shown', 'true');
-      }, 2000);
-    }
+    // if (!hasShownWarning) {
+    //   setTimeout(() => {
+    //     toast.warning(
+    //       "Demo Environment",
+    //       {
+    //         description: "This is a simulated environment. No real blockchain transactions are performed.",
+    //         duration: 8000,
+    //       }
+    //     );
+    //     sessionStorage.setItem('demo-warning-shown', 'true');
+    //   }, 2000);
+    // }
   }, []);
   
   return (
