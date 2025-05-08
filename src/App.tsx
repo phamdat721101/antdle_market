@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,12 +8,13 @@ import NotFound from "./pages/NotFound";
 import MarketsList from "./pages/MarketsList";
 import MarketDetail from "./pages/MarketDetail";
 import MyPositions from "./pages/MyPositions";
+import Transactions from './pages/Transactions';
 import { useEffect } from "react";
 import { toast } from "sonner";
 
 const queryClient = new QueryClient();
 
-const App = () => {
+function App() {
   // Show a warning for demo purposes
   useEffect(() => {
     // Only show once per session
@@ -45,12 +45,13 @@ const App = () => {
             <Route path="/markets" element={<MarketsList />} />
             <Route path="/markets/:id" element={<MarketDetail />} />
             <Route path="/my-positions" element={<MyPositions />} />
+            <Route path="/transactions" element={<Transactions />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   );
-};
+}
 
 export default App;

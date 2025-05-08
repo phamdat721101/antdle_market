@@ -172,6 +172,55 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess, onChain
     setEstimatedLeo(estimatedAmount);
   }, [swapAmount]);
 
+  const recordTransaction = async (
+    txHash: string,
+    txType: 'approve' | 'predict' | 'swap' | 'claim',
+    positionType?: 'yes' | 'no',
+    amount?: string,
+    status: 'pending' | 'confirmed' | 'failed' = 'pending'
+  ) => {
+    try {
+      const userWallet = localStorage.getItem('walletAddress');
+      if (!userWallet) return;
+
+      const { data, error } = await supabase.from('user_transactions').insert({
+        user_wallet_address: userWallet,
+        tx_hash: txHash,
+        tx_type: txType,
+        position_type: positionType || null,
+        market_id: txType === 'predict' ? marketId : null,
+        amount: amount ? parseFloat(amount) : null,
+        status: status
+      });
+
+      if (error) {
+        console.error('Error recording transaction:', error);
+      }
+
+      return data;
+    } catch (err) {
+      console.error('Failed to record transaction:', err);
+    }
+  };
+
+  const updateTransactionStatus = async (
+    txHash: string,
+    status: 'pending' | 'confirmed' | 'failed'
+  ) => {
+    try {
+      const { error } = await supabase
+        .from('user_transactions')
+        .update({ status })
+        .eq('tx_hash', txHash);
+
+      if (error) {
+        console.error('Error updating transaction status:', error);
+      }
+    } catch (err) {
+      console.error('Failed to update transaction status:', err);
+    }
+  };
+
   const connectWallet = async () => {
     setWalletConnecting(true);
     try {
@@ -333,12 +382,18 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess, onChain
           // Set pending transaction hash for approval
           setTxHash(approveTx.hash);
           
+          // Record the approval transaction
+          await recordTransaction(approveTx.hash, 'approve', undefined, amount);
+          
           // Wait for approval transaction confirmation
           const approveReceipt = await approveTx.wait();
           
           if (!approveReceipt || approveReceipt.status !== 1) {
+            await updateTransactionStatus(approveTx.hash, 'failed');
             throw new Error("Token approval failed");
           }
+          
+          await updateTransactionStatus(approveTx.hash, 'confirmed');
           
           toast({
             title: "Token Approval Confirmed",
@@ -357,6 +412,9 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess, onChain
           // Set pending transaction hash
           setTxHash(tx.hash);
           
+          // Record the prediction transaction
+          await recordTransaction(tx.hash, 'predict', position, amount);
+          
           toast({
             title: "Transaction Submitted",
             description: `Your prediction transaction has been submitted to the blockchain. It may take a few moments to confirm.`,
@@ -367,6 +425,9 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess, onChain
           
           if (receipt && receipt.status === 1) {
             setTxStatus('confirmed');
+            
+            // Update transaction status
+            await updateTransactionStatus(tx.hash, 'confirmed');
             
             // Update local state and LEO balance
             const newBalance = (parseFloat(leoBalance) - parseFloat(amount)).toFixed(2);
@@ -381,11 +442,17 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess, onChain
             setAmount('');
             onSuccess();
           } else {
+            await updateTransactionStatus(tx.hash, 'failed');
             throw new Error("Transaction failed");
           }
         } catch (error: any) {
           console.error("On-chain transaction error:", error);
           setTxStatus('failed');
+          
+          // Update transaction status if we have a tx hash
+          if (txHash) {
+            await updateTransactionStatus(txHash, 'failed');
+          }
           
           toast({
             title: "Transaction Failed",
@@ -404,6 +471,12 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess, onChain
     } catch (error: any) {
       console.error("Transaction error:", error);
       setTxStatus('failed');
+      
+      // Update transaction status if we have a tx hash
+      if (txHash) {
+        await updateTransactionStatus(txHash, 'failed');
+      }
+      
       toast({
         title: "Transaction Failed",
         description: error.message || "Failed to place prediction on-chain",
@@ -465,6 +538,9 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess, onChain
             { value: amountInWei, gasLimit: 200000 }
           );
           
+          // Record the swap transaction
+          await recordTransaction(tx.hash, 'swap', undefined, estimatedLeo);
+          
           toast({
             title: "Swap Transaction Submitted",
             description: `Your token swap has been submitted to the blockchain. It may take a few moments to confirm.`,
@@ -474,6 +550,9 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess, onChain
           const receipt = await tx.wait();
           
           if (receipt && receipt.status === 1) {
+            // Update transaction status
+            await updateTransactionStatus(tx.hash, 'confirmed');
+            
             // Transaction successful
             // Get chain name for better user experience
             const chainName = localStorage.getItem('chainName') || 'blockchain';
@@ -496,10 +575,16 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess, onChain
             // Switch to predict tab
             setActiveTab('predict');
           } else {
+            await updateTransactionStatus(tx.hash, 'failed');
             throw new Error("Swap transaction failed");
           }
         } catch (error: any) {
           console.error("On-chain swap error:", error);
+          
+          // Update transaction status if we have a tx hash
+          if (txHash) {
+            await updateTransactionStatus(txHash, 'failed');
+          }
           
           toast({
             title: "Swap Failed",

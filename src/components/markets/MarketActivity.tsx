@@ -28,47 +28,63 @@ export const MarketActivity = ({ marketId }: MarketActivityProps) => {
     const fetchActivities = async () => {
       setIsLoading(true);
       try {
-        // Query for trade activities related to this market
+        // Query for actual trade activities from user_transactions table
         const { data, error } = await supabase
-          .from('prediction_markets')
+          .from('user_transactions')
           .select('*')
-          .eq('id', marketId)
+          .eq('market_id', marketId)
+          .eq('tx_type', 'predict')
+          .order('created_at', { ascending: false })
           .limit(20);
         
         if (error) throw error;
+
+        // Transform the data to match our ActivityItem interface
+        const formattedActivities: ActivityItem[] = data.map(tx => ({
+          id: tx.id,
+          created_at: tx.created_at,
+          market_id: tx.market_id,
+          user_address: tx.user_wallet_address,
+          position: tx.position_type as 'yes' | 'no',
+          amount: Number(tx.amount),
+          tx_hash: tx.tx_hash
+        }));
         
-        // Since we don't have actual market_activities table in this demo project,
-        // we'll generate some sample activities for demonstration
-        const sampleActivities: ActivityItem[] = [
-          {
-            id: '1',
-            created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-            market_id: marketId,
-            user_address: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
-            position: 'yes',
-            amount: 25,
-            tx_hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
-          },
-          {
-            id: '2',
-            created_at: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
-            market_id: marketId,
-            user_address: '0x1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t',
-            position: 'no',
-            amount: 50
-          },
-          {
-            id: '3',
-            created_at: new Date(Date.now() - 14400000).toISOString(), // 4 hours ago
-            market_id: marketId,
-            user_address: '0x9876543210abcdef9876543210abcdef98765432',
-            position: 'yes',
-            amount: 10,
-            tx_hash: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890'
-          }
-        ];
-        
-        setActivities(sampleActivities);
+        // If no transactions found, use sample data for demonstration
+        if (formattedActivities.length === 0) {
+          const sampleActivities: ActivityItem[] = [
+            {
+              id: '1',
+              created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+              market_id: marketId,
+              user_address: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+              position: 'yes',
+              amount: 25,
+              tx_hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+            },
+            {
+              id: '2',
+              created_at: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
+              market_id: marketId,
+              user_address: '0x1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t',
+              position: 'no',
+              amount: 50
+            },
+            {
+              id: '3',
+              created_at: new Date(Date.now() - 14400000).toISOString(), // 4 hours ago
+              market_id: marketId,
+              user_address: '0x9876543210abcdef9876543210abcdef98765432',
+              position: 'yes',
+              amount: 10,
+              tx_hash: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890'
+            }
+          ];
+          
+          setActivities(sampleActivities);
+        } else {
+          setActivities(formattedActivities);
+        }
       } catch (error) {
         console.error('Error fetching activities:', error);
       } finally {

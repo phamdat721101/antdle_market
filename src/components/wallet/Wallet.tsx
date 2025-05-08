@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -418,6 +417,13 @@ export const Wallet = () => {
             <DropdownMenuItem onClick={disconnectWallet} className="cursor-pointer text-red-600">
               <LogOut size={16} className="mr-2" />
               Disconnect Wallet
+            </DropdownMenuItem>
+            {/* Add this link in your dropdown menu */}
+            <DropdownMenuItem asChild>
+              <Link to="/transactions" className="w-full">
+                <LayoutList className="mr-2 h-4 w-4" />
+                <span>Transactions</span>
+              </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

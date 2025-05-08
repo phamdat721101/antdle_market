@@ -315,6 +315,50 @@ export type Database = {
         }
         Relationships: []
       }
+      user_transactions: {
+        Row: {
+          amount: number | null
+          created_at: string
+          id: string
+          market_id: string | null
+          position_type: string | null
+          status: string
+          tx_hash: string
+          tx_type: string
+          user_wallet_address: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          id?: string
+          market_id?: string | null
+          position_type?: string | null
+          status?: string
+          tx_hash: string
+          tx_type: string
+          user_wallet_address: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          id?: string
+          market_id?: string | null
+          position_type?: string | null
+          status?: string
+          tx_hash?: string
+          tx_type?: string
+          user_wallet_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_transactions_market_id_fkey"
+            columns: ["market_id"]
+            isOneToOne: false
+            referencedRelation: "prediction_markets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           created_at: string | null
