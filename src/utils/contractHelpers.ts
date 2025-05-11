@@ -1,4 +1,3 @@
-
 import { ethers } from "ethers";
 
 // Prediction Market Contract ABI (simplified for the functions we need)
@@ -270,3 +269,13 @@ export const getOnChainIdFromSupabase = async (marketId: string) => {
     return null;
   }
 };
+
+// Add function to validate Ethereum addresses
+export function isAddressValid(address: string): boolean {
+  try {
+    // Check if it's a valid Ethereum address format
+    return /^0x[a-fA-F0-9]{40}$/.test(address);
+  } catch (error) {
+    return false;
+  }
+}

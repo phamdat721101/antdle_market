@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useWallet } from '@/hooks/use-wallet';
@@ -24,6 +25,7 @@ import { Menu } from "lucide-react"
 import { LayoutList } from "lucide-react"
 import leofiLogo from '/leofi_icon.png';
 import { formatAddress } from '@/utils/contractHelpers';
+import { ClaimLeoModal } from '@/components/claim/ClaimLeoModal';
 
 export const Header = () => {
   const { isConnected, walletAddress, connectWallet, disconnectWallet } = useWallet();
@@ -52,6 +54,7 @@ export const Header = () => {
             <Link to="/transactions" className="text-gray-600 hover:text-orange-600 px-3 py-2 text-sm font-medium">
               Transactions
             </Link>
+            <ClaimLeoModal />
           </nav>
           
           {/* Wallet and Theme Toggle */}
@@ -129,9 +132,10 @@ export const Header = () => {
                 <Link to="/my-positions" className="text-gray-600 hover:text-orange-600 px-3 py-2 text-sm font-medium block">
                   My Positions
                 </Link>
-                 <Link to="/transactions" className="text-gray-600 hover:text-orange-600 px-3 py-2 text-sm font-medium block">
+                <Link to="/transactions" className="text-gray-600 hover:text-orange-600 px-3 py-2 text-sm font-medium block">
                   Transactions
                 </Link>
+                <ClaimLeoModal />
                 <ModeToggle />
                 {!isConnected && !walletAddress && (
                   <Button onClick={connectWallet}>Connect Wallet</Button>
@@ -141,8 +145,6 @@ export const Header = () => {
           </Sheet>
         </div>
       </div>
-      
-      {/* Mobile Menu (Hidden by default) */}
     </header>
   );
 };
