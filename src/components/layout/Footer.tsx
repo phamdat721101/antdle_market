@@ -8,7 +8,7 @@ export const Footer = () => {
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="mb-4 md:mb-0">
             <img 
-              src="/public/leofi.jpg" 
+              src="/leofi.jpg" 
               alt="LeoFi" 
               className="h-10 w-auto" 
             />

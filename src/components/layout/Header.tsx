@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/sheet"
 import { Menu } from "lucide-react"
 import { LayoutList } from "lucide-react"
-import leofiLogo from '/public/leofi_icon.png';
+import leofiLogo from '/leofi_icon.png';
 import { formatAddress } from '@/utils/contractHelpers';
 
 export const Header = () => {
