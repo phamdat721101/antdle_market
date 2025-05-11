@@ -12,6 +12,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu"
 import {
   Sheet,
@@ -21,14 +24,13 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import { Menu } from "lucide-react"
-import { LayoutList } from "lucide-react"
+import { Menu, Users, LogOut, Wallet as WalletIcon, LayoutList } from "lucide-react"
 import leofiLogo from '/leofi_icon.png';
 import { formatAddress } from '@/utils/contractHelpers';
 import { ClaimLeoModal } from '@/components/claim/ClaimLeoModal';
 
 export const Header = () => {
-  const { isConnected, walletAddress, connectWallet, disconnectWallet } = useWallet();
+  const { isConnected, walletAddress, accounts, connectWallet, disconnectWallet, switchAccount } = useWallet();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   return (
@@ -74,20 +76,41 @@ export const Header = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuLabel className="font-normal text-xs text-gray-500">
+                    {formatAddress(walletAddress)}
+                  </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="cursor-pointer">
-                    <a
-                      href={`https://etherscan.io/address/${walletAddress}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center w-full"
-                    >
-                      <span className="mr-2">
-                        {formatAddress(walletAddress)}
-                      </span>
-                      {/* <ExternalLink className="h-4 w-4 ml-auto" /> */}
-                    </a>
-                  </DropdownMenuItem>
+                  
+                  {/* Account Switcher */}
+                  {accounts.length > 1 && (
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <Users className="mr-2 h-4 w-4" />
+                        <span>Switch Account</span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="w-48">
+                        {accounts.map((account) => (
+                          <DropdownMenuItem 
+                            key={account}
+                            className={`cursor-pointer ${account === walletAddress ? 'bg-purple-50 dark:bg-purple-900/20' : ''}`}
+                            onClick={() => account !== walletAddress && switchAccount(account)}
+                          >
+                            <div className="flex items-center w-full">
+                              <Avatar className="h-5 w-5 mr-2">
+                                <AvatarImage src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${account}`} />
+                                <AvatarFallback>{account.substring(0, 2)}</AvatarFallback>
+                              </Avatar>
+                              <span className="truncate">{formatAddress(account)}</span>
+                              {account === walletAddress && (
+                                <span className="ml-auto text-xs text-green-600">•</span>
+                              )}
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  )}
+                  
                   <DropdownMenuItem asChild>
                     <Link to="/my-positions" className="w-full">
                       <LayoutList className="mr-2 h-4 w-4" />
@@ -101,8 +124,9 @@ export const Header = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={disconnectWallet}>
-                    Log out
+                  <DropdownMenuItem onClick={disconnectWallet} className="text-red-600 cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Disconnect</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

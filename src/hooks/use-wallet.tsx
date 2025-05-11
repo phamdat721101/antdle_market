@@ -9,6 +9,7 @@ export const useWallet = () => {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [leoBalance, setLeoBalance] = useState("0");
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
+  const [accounts, setAccounts] = useState<string[]>([]);
 
   useEffect(() => {
     // Check if wallet is already connected
@@ -24,9 +25,89 @@ export const useWallet = () => {
         
         // Fetch LEO token balance
         fetchLeoBalance(savedAddress, ethProvider);
+        
+        // Get all accounts
+        fetchAccounts();
       }
     }
+    
+    // Listen for account changes
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+    }
+    
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+      }
+    };
   }, []);
+  
+  // Handle account changes from the wallet
+  const handleAccountsChanged = async (newAccounts: string[]) => {
+    console.log("Accounts changed:", newAccounts);
+    if (newAccounts.length === 0) {
+      // User disconnected wallet
+      disconnectWallet();
+    } else {
+      // User switched accounts
+      const newAccount = newAccounts[0];
+      setWalletAddress(newAccount);
+      localStorage.setItem('walletAddress', newAccount);
+      setAccounts(newAccounts);
+      
+      // Refresh balance for new account
+      if (provider) {
+        fetchLeoBalance(newAccount, provider);
+      }
+      
+      toast.success("Account Changed", {
+        description: `Switched to ${formatAddress(newAccount)}`,
+      });
+    }
+  };
+  
+  // Fetch all accounts from wallet
+  const fetchAccounts = async () => {
+    if (window.ethereum) {
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        setAccounts(accounts || []);
+      } catch (error) {
+        console.error("Error fetching accounts:", error);
+      }
+    }
+  };
+  
+  // Switch to a specific account
+  const switchAccount = async (accountAddress: string) => {
+    if (!window.ethereum) {
+      toast.error("Wallet not available");
+      return;
+    }
+    
+    try {
+      // Request to switch to the specified account
+      // Note: Some wallets may not support direct account switching and might show their own UI
+      await window.ethereum.request({
+        method: 'wallet_requestPermissions',
+        params: [{
+          eth_accounts: {}
+        }]
+      });
+      
+      // After permission request, check if the active account changed
+      const currentAccounts = await window.ethereum.request({ method: 'eth_accounts' });
+      handleAccountsChanged(currentAccounts);
+      
+      // Refresh accounts list
+      fetchAccounts();
+    } catch (error: any) {
+      toast.error("Failed to switch account", {
+        description: error.message || "Please try manually switching in your wallet"
+      });
+    }
+  };
   
   // Function to fetch LEO token balance
   const fetchLeoBalance = async (address: string, ethProvider: ethers.BrowserProvider | null) => {
@@ -60,6 +141,9 @@ export const useWallet = () => {
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
         const userAddress = accounts[0];
         
+        // Store all accounts
+        setAccounts(accounts);
+        
         // Store in localStorage
         localStorage.setItem('walletAddress', userAddress);
         
@@ -89,6 +173,7 @@ export const useWallet = () => {
         // Update state
         setWalletAddress(simulatedAddress);
         setIsConnected(true);
+        setAccounts([simulatedAddress]);
         
         // Set simulated balance
         const simulatedBalance = "100.00";
@@ -118,6 +203,7 @@ export const useWallet = () => {
     setIsConnected(false);
     setLeoBalance("0");
     setProvider(null);
+    setAccounts([]);
     
     toast.info("Wallet Disconnected", {
       description: "Your wallet has been disconnected",
@@ -135,8 +221,10 @@ export const useWallet = () => {
     isConnected,
     walletAddress,
     leoBalance,
+    accounts,
     connectWallet,
     disconnectWallet,
+    switchAccount,
     refreshBalance,
     provider
   };
