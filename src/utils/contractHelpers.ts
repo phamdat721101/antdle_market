@@ -1,4 +1,5 @@
 import { ethers } from "ethers";
+import { supabase } from '@/integrations/supabase/client';
 
 // Prediction Market Contract ABI (simplified for the functions we need)
 export const PREDICTION_CONTRACT_ABI = [
@@ -279,3 +280,58 @@ export function isAddressValid(address: string): boolean {
     return false;
   }
 }
+
+// Update market pools in the database after a prediction
+export const updateMarketPools = async (
+  marketId: string,
+  position: 'yes' | 'no',
+  amount: number
+): Promise<void> => {
+  try {
+    // First fetch the current market data
+    const { data: market, error: fetchError } = await supabase
+      .from('prediction_markets')
+      .select('yes_pool, no_pool')
+      .eq('id', marketId)
+      .single();
+    
+    if (fetchError) {
+      console.error("Error fetching market data:", fetchError);
+      return;
+    }
+    
+    // Calculate the new pool values
+    const updates = position === 'yes' 
+      ? { yes_pool: Number(market.yes_pool) + amount } 
+      : { no_pool: Number(market.no_pool) + amount };
+    
+    // Update the market pools
+    const { error: updateError } = await supabase
+      .from('prediction_markets')
+      .update(updates)
+      .eq('id', marketId);
+    
+    if (updateError) {
+      console.error("Error updating market pools:", updateError);
+      return;
+    }
+    
+    console.log(`Successfully updated ${position} pool for market ${marketId} with ${amount} LEO`);
+    
+    // Also create a record in user_positions table for tracking
+    const { error: positionError } = await supabase
+      .from('user_positions')
+      .insert({
+        market_id: marketId,
+        user_wallet_address: localStorage.getItem('walletAddress'),
+        position_type: position,
+        amount: amount
+      });
+    
+    if (positionError) {
+      console.error("Error recording user position:", positionError);
+    }
+  } catch (error) {
+    console.error("Error updating market pools:", error);
+  }
+};

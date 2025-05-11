@@ -24,7 +24,8 @@ import {
   getPredictionContract,
   getTokenContract,
   getOnChainIdFromSupabase,
-  formatAddress
+  formatAddress,
+  updateMarketPools
 } from '@/utils/contractHelpers';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -428,6 +429,9 @@ export const TradeForm = ({ marketId, assetName, strikePrice, onSuccess, onChain
             
             // Update transaction status
             await updateTransactionStatus(tx.hash, 'confirmed');
+            
+            // Update market pools in the database
+            await updateMarketPools(marketId, position, parseFloat(amount));
             
             // Update local state and LEO balance
             const newBalance = (parseFloat(leoBalance) - parseFloat(amount)).toFixed(2);
