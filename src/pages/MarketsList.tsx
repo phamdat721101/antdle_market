@@ -67,12 +67,12 @@ const MarketsList = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Prediction Markets</h1>
-            <p className="mt-1 text-gray-600">Predict the future price of assets</p>
+            <h1 className="text-3xl font-bold text-foreground">Prediction Markets</h1>
+            <p className="mt-1 text-muted-foreground">Predict the future price of assets</p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="mt-4 md:mt-0 bg-orange-600 hover:bg-orange-700">
+              <Button className="mt-4 md:mt-0 bg-primary hover:bg-primary/90">
                 Create Market
               </Button>
             </DialogTrigger>

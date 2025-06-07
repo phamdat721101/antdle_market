@@ -12,18 +12,18 @@ const Transactions = () => {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Transaction History</h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-8">View your on-chain transaction history</p>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Transaction History</h1>
+        <p className="text-muted-foreground mb-8">View your on-chain transaction history</p>
 
         {walletAddress ? (
           <>
-            <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800 rounded-lg">
+            <div className="mb-6 p-4 bg-secondary border border-border rounded-lg">
               <h3 className="font-medium text-lg">Your LEO Balance</h3>
-              <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{leoBalance} LEO</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Token Address: {`0xA1F...1875`}</p>
+              <p className="text-2xl font-bold text-primary">{leoBalance} LEO</p>
+              <p className="text-sm text-muted-foreground mt-1">Token Address: {`0xA1F...1875`}</p>
             </div>
-            <Card className="border border-orange-100 dark:border-orange-900 shadow-md">
-              <CardHeader className="bg-orange-50/80 dark:bg-orange-900/20">
+            <Card className="border border-border shadow-md">
+              <CardHeader className="bg-secondary">
                 <CardTitle className="text-lg font-medium">Recent Transactions</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
@@ -36,10 +36,10 @@ const Transactions = () => {
             </Card>
           </>
         ) : (
-          <div className="text-center p-12 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-100 dark:border-orange-800">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Connect your wallet</h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">Connect your wallet to view your transaction history</p>
-            <Button onClick={connectWallet} className="bg-orange-500 hover:bg-orange-600 text-white">Connect Wallet</Button>
+          <div className="text-center p-12 bg-secondary rounded-lg border border-border">
+            <h3 className="text-lg font-medium text-foreground mb-2">Connect your wallet</h3>
+            <p className="text-muted-foreground mb-6">Connect your wallet to view your transaction history</p>
+            <Button onClick={connectWallet} className="bg-primary hover:bg-primary/90">Connect Wallet</Button>
           </div>
         )}
       </div>

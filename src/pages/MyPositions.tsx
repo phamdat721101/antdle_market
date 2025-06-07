@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
@@ -226,29 +225,29 @@ const MyPositions = () => {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">My On-Chain Positions</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-6">My On-Chain Positions</h1>
         
         {walletAddress ? (
           <>
             <div className="mb-8">
-              <Card className="border border-orange-100 dark:border-orange-900 shadow-md">
-                <CardHeader className="bg-secondary/80 dark:bg-secondary/20">
+              <Card className="border border-border shadow-md">
+                <CardHeader className="bg-secondary">
                   <CardTitle>Portfolio Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Positions</p>
+                      <p className="text-sm text-muted-foreground">Total Positions</p>
                       <p className="text-2xl font-bold">{positions.length}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Value</p>
+                      <p className="text-sm text-muted-foreground">Total Value</p>
                       <p className="text-2xl font-bold">{calculateTotalValue().toFixed(2)} LEO</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Connected Wallet</p>
+                      <p className="text-sm text-muted-foreground">Connected Wallet</p>
                       <p className="text-sm font-mono truncate">{walletAddress}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{localStorage.getItem('chainName') || 'Connected Chain'}</p>
+                      <p className="text-xs text-muted-foreground">{localStorage.getItem('chainName') || 'Connected Chain'}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -260,7 +259,7 @@ const MyPositions = () => {
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
               </div>
             ) : positions.length > 0 ? (
-              <Card className="border border-orange-100 dark:border-orange-900 shadow-md">
+              <Card className="border border-border shadow-md">
                 <CardContent className="p-0">
                   <Table>
                     <TableHeader>
@@ -312,7 +311,7 @@ const MyPositions = () => {
                               <Button 
                                 size="sm" 
                                 variant="outline" 
-                                className="text-gray-500 border-gray-300"
+                                className="text-muted-foreground border-border"
                                 disabled
                               >
                                 {position.market.status === 'active' ? 'Active' : position.claimed ? 'Claimed' : 'Lost'}
@@ -326,9 +325,9 @@ const MyPositions = () => {
                 </CardContent>
               </Card>
             ) : (
-              <div className="text-center p-12 bg-secondary rounded-lg border border-orange-100 dark:border-orange-900">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No positions yet</h3>
-                <p className="text-gray-500 dark:text-gray-400 mb-6">You haven't made any on-chain predictions yet</p>
+              <div className="text-center p-12 bg-secondary rounded-lg border border-border">
+                <h3 className="text-lg font-medium text-foreground mb-2">No positions yet</h3>
+                <p className="text-muted-foreground mb-6">You haven't made any on-chain predictions yet</p>
                 <Link to="/markets">
                   <Button className="bg-primary hover:bg-primary/90">Browse Markets</Button>
                 </Link>
@@ -336,9 +335,9 @@ const MyPositions = () => {
             )}
           </>
         ) : (
-          <div className="text-center p-12 bg-secondary rounded-lg border border-orange-100 dark:border-orange-900">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Connect your wallet</h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">Connect your wallet to view your positions</p>
+          <div className="text-center p-12 bg-secondary rounded-lg border border-border">
+            <h3 className="text-lg font-medium text-foreground mb-2">Connect your wallet</h3>
+            <p className="text-muted-foreground mb-6">Connect your wallet to view your positions</p>
             <Button className="bg-primary hover:bg-primary/90">Connect Wallet</Button>
           </div>
         )}

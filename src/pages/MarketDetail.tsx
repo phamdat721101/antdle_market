@@ -100,14 +100,14 @@ const MarketDetail = () => {
       <Layout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2 mb-10"></div>
+            <div className="h-8 bg-muted rounded w-1/3 mb-4"></div>
+            <div className="h-4 bg-muted rounded w-1/2 mb-10"></div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="col-span-2">
-                <div className="h-64 bg-gray-200 rounded-lg mb-6"></div>
-                <div className="h-32 bg-gray-200 rounded-lg"></div>
+                <div className="h-64 bg-muted rounded-lg mb-6"></div>
+                <div className="h-32 bg-muted rounded-lg"></div>
               </div>
-              <div className="h-80 bg-gray-200 rounded-lg"></div>
+              <div className="h-80 bg-muted rounded-lg"></div>
             </div>
           </div>
         </div>
@@ -127,20 +127,20 @@ const MarketDetail = () => {
           </Button>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
                 {market.asset_name} {'>'} ${market.strike_price.toFixed(2)}
-                <Badge className={`${market.status === 'active' ? 'bg-green-500' : 'bg-gray-500'}`}>
+                <Badge className={`${market.status === 'active' ? 'bg-green-500' : 'bg-muted'}`}>
                   {market.status}
                 </Badge>
                 {market.on_chain_id && (
                   <Badge className="bg-purple-500">On-Chain</Badge>
                 )}
               </h1>
-              <p className="mt-1 text-gray-600">
+              <p className="mt-1 text-muted-foreground">
                 Expires {formatTimeToExpiry(market.expiry_timestamp)}
               </p>
               {market.description && (
-                <p className="mt-3 text-gray-700">{market.description}</p>
+                <p className="mt-3 text-foreground">{market.description}</p>
               )}
             </div>
           </div>
@@ -159,7 +159,7 @@ const MarketDetail = () => {
                     <span className="font-medium text-green-600">Yes ({yes.toFixed(1)}%)</span>
                     <span className="font-medium text-red-600">No ({no.toFixed(1)}%)</span>
                   </div>
-                  <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="w-full h-4 bg-muted rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-green-500" 
                       style={{ 
@@ -175,24 +175,24 @@ const MarketDetail = () => {
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4 mt-6">
-                  <div className="p-4 bg-green-50 rounded-lg border border-green-100 text-center">
-                    <p className="text-sm text-gray-600">YES Pool</p>
+                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800 text-center">
+                    <p className="text-sm text-muted-foreground">YES Pool</p>
                     <p className="text-2xl font-bold text-green-600">{market.yes_pool.toLocaleString()} LEO</p>
                   </div>
-                  <div className="p-4 bg-red-50 rounded-lg border border-red-100 text-center">
-                    <p className="text-sm text-gray-600">NO Pool</p>
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-800 text-center">
+                    <p className="text-sm text-muted-foreground">NO Pool</p>
                     <p className="text-2xl font-bold text-red-600">{market.no_pool.toLocaleString()} LEO</p>
                   </div>
                 </div>
                 
                 {isExpired && market.status === 'settled' && (
-                  <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                  <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
                     <p className="font-medium text-lg mb-2">Market Results</p>
                     <div className="flex items-center space-x-2">
                       <div className={`p-2 rounded-full ${true ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
                         {true ? <Check size={20} /> : <X size={20} />}
                       </div>
-                      <p className="text-gray-800">
+                      <p className="text-foreground">
                         {market.asset_name} price was{' '}
                         <span className="font-medium">{true ? 'above' : 'below'}</span>{' '}
                         ${market.strike_price} at expiry.

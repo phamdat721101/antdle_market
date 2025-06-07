@@ -25,7 +25,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { Menu, Users, LogOut, Wallet as WalletIcon, LayoutList } from "lucide-react"
-import leofiLogo from '/leofi_icon.png';
+import antdleLogo from '/lovable-uploads/6f3a6f5a-5ffc-4057-940b-dd98966c1f00.png';
 import { formatAddress } from '@/utils/contractHelpers';
 import { ClaimLeoModal } from '@/components/claim/ClaimLeoModal';
 
@@ -34,26 +34,26 @@ export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   return (
-    <header className="border-b border-gray-200 bg-white">
+    <header className="border-b border-border bg-background">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center">
-              <img src={leofiLogo} alt="LeoFi Logo" className="h-8 mr-2" />
-              <span className="text-xl font-bold text-gray-900">LeoFi</span>
+              <img src={antdleLogo} alt="Antdle Logo" className="h-8 mr-2" />
+              <span className="text-xl font-bold text-foreground">Antdle</span>
             </Link>
           </div>
           
           {/* Navigation Links */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link to="/markets" className="text-gray-600 hover:text-orange-600 px-3 py-2 text-sm font-medium">
+            <Link to="/markets" className="text-muted-foreground hover:text-primary px-3 py-2 text-sm font-medium">
               Markets
             </Link>
-            <Link to="/my-positions" className="text-gray-600 hover:text-orange-600 px-3 py-2 text-sm font-medium">
+            <Link to="/my-positions" className="text-muted-foreground hover:text-primary px-3 py-2 text-sm font-medium">
               My Positions
             </Link>
-            <Link to="/transactions" className="text-gray-600 hover:text-orange-600 px-3 py-2 text-sm font-medium">
+            <Link to="/transactions" className="text-muted-foreground hover:text-primary px-3 py-2 text-sm font-medium">
               Transactions
             </Link>
             <ClaimLeoModal />
@@ -76,7 +76,7 @@ export const Header = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                  <DropdownMenuLabel className="font-normal text-xs text-gray-500">
+                  <DropdownMenuLabel className="font-normal text-xs text-muted-foreground">
                     {formatAddress(walletAddress)}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -92,7 +92,7 @@ export const Header = () => {
                         {accounts.map((account) => (
                           <DropdownMenuItem 
                             key={account}
-                            className={`cursor-pointer ${account === walletAddress ? 'bg-purple-50 dark:bg-purple-900/20' : ''}`}
+                            className={`cursor-pointer ${account === walletAddress ? 'bg-primary/10 dark:bg-primary/20' : ''}`}
                             onClick={() => account !== walletAddress && switchAccount(account)}
                           >
                             <div className="flex items-center w-full">
@@ -124,7 +124,7 @@ export const Header = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={disconnectWallet} className="text-red-600 cursor-pointer">
+                  <DropdownMenuItem onClick={disconnectWallet} className="text-destructive cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Disconnect</span>
                   </DropdownMenuItem>
@@ -150,13 +150,13 @@ export const Header = () => {
                 </SheetDescription>
               </SheetHeader>
               <div className="grid gap-4 py-4">
-                <Link to="/markets" className="text-gray-600 hover:text-orange-600 px-3 py-2 text-sm font-medium block">
+                <Link to="/markets" className="text-muted-foreground hover:text-primary px-3 py-2 text-sm font-medium block">
                   Markets
                 </Link>
-                <Link to="/my-positions" className="text-gray-600 hover:text-orange-600 px-3 py-2 text-sm font-medium block">
+                <Link to="/my-positions" className="text-muted-foreground hover:text-primary px-3 py-2 text-sm font-medium block">
                   My Positions
                 </Link>
-                <Link to="/transactions" className="text-gray-600 hover:text-orange-600 px-3 py-2 text-sm font-medium block">
+                <Link to="/transactions" className="text-muted-foreground hover:text-primary px-3 py-2 text-sm font-medium block">
                   Transactions
                 </Link>
                 <ClaimLeoModal />

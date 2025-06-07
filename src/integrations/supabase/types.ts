@@ -9,6 +9,27 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ai_tools: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          prompt_template: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          prompt_template: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          prompt_template?: string
+        }
+        Relationships: []
+      }
       claims: {
         Row: {
           created_at: string
@@ -119,6 +140,51 @@ export type Database = {
           },
         ]
       }
+      mentor_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          link: string | null
+          mentor_id: string
+          mode: string
+          scheduled_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          link?: string | null
+          mentor_id: string
+          mode: string
+          scheduled_at: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          link?: string | null
+          mentor_id?: string
+          mode?: string
+          scheduled_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_sessions_mentor_id_fkey"
+            columns: ["mentor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nft_mints: {
         Row: {
           id: string
@@ -220,6 +286,82 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          created_at: string
+          goal: string | null
+          name: string
+          stage: number
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          created_at?: string
+          goal?: string | null
+          name: string
+          stage?: number
+          user_id: string
+          xp?: number
+        }
+        Update: {
+          created_at?: string
+          goal?: string | null
+          name?: string
+          stage?: number
+          user_id?: string
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quests: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          requirements: string
+          stage: number
+          title: string
+          xp_reward: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          requirements: string
+          stage: number
+          title: string
+          xp_reward: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          requirements?: string
+          stage?: number
+          title?: string
+          xp_reward?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quests_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_pages: {
         Row: {
           chunk_number: number
@@ -318,6 +460,61 @@ export type Database = {
           },
         ]
       }
+      user_quests: {
+        Row: {
+          id: string
+          proof_url: string | null
+          quest_id: string
+          reviewed_at: string | null
+          reviewer_id: string | null
+          status: string
+          submitted_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          proof_url?: string | null
+          quest_id: string
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          status: string
+          submitted_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          proof_url?: string | null
+          quest_id?: string
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          status?: string
+          submitted_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_quests_quest_id_fkey"
+            columns: ["quest_id"]
+            isOneToOne: false
+            referencedRelation: "quests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_quests_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_quests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_trackit: {
         Row: {
           created_at: string | null
@@ -391,18 +588,21 @@ export type Database = {
           created_at: string | null
           email: string
           id: string
+          role: string | null
           wallet_address: string
         }
         Insert: {
           created_at?: string | null
           email: string
           id?: string
+          role?: string | null
           wallet_address: string
         }
         Update: {
           created_at?: string | null
           email?: string
           id?: string
+          role?: string | null
           wallet_address?: string
         }
         Relationships: []
