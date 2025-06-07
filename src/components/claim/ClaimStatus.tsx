@@ -74,8 +74,8 @@ export const ClaimStatus = ({ email }: ClaimStatusProps) => {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Leo Token Claim</CardTitle>
-        <CardDescription>Current status of your Leo token claim</CardDescription>
+        <CardTitle>ANT Token Claim</CardTitle>
+        <CardDescription>Current status of your ANT token claim</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -95,12 +95,12 @@ export const ClaimStatus = ({ email }: ClaimStatusProps) => {
           </div>
           {claim.status === 'pending' && (
             <p className="text-sm text-muted-foreground">
-              Your Leo tokens will be sent to your wallet soon. This process typically takes 1-24 hours.
+              Your ANT tokens will be sent to your wallet soon. This process typically takes 1-24 hours.
             </p>
           )}
           {claim.status === 'sent' && (
             <p className="text-sm text-green-600">
-              Your Leo tokens have been sent to your wallet. Check your wallet balance!
+              Your ANT tokens have been sent to your wallet. Check your wallet balance!
             </p>
           )}
           {claim.status === 'failed' && (

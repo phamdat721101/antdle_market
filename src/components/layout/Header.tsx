@@ -27,7 +27,7 @@ import {
 import { Menu, Users, LogOut, Wallet as WalletIcon, LayoutList } from "lucide-react"
 import antdleLogo from '/lovable-uploads/6f3a6f5a-5ffc-4057-940b-dd98966c1f00.png';
 import { formatAddress } from '@/utils/contractHelpers';
-import { ClaimLeoModal } from '@/components/claim/ClaimLeoModal';
+import { ClaimAntModal } from '@/components/claim/ClaimAntModal';
 
 export const Header = () => {
   const { isConnected, walletAddress, accounts, connectWallet, disconnectWallet, switchAccount } = useWallet();
@@ -56,7 +56,7 @@ export const Header = () => {
             <Link to="/transactions" className="text-muted-foreground hover:text-primary px-3 py-2 text-sm font-medium">
               Transactions
             </Link>
-            <ClaimLeoModal />
+            <ClaimAntModal />
           </nav>
           
           {/* Wallet and Theme Toggle */}
@@ -159,7 +159,7 @@ export const Header = () => {
                 <Link to="/transactions" className="text-muted-foreground hover:text-primary px-3 py-2 text-sm font-medium block">
                   Transactions
                 </Link>
-                <ClaimLeoModal />
+                <ClaimAntModal />
                 <ModeToggle />
                 {!isConnected && !walletAddress && (
                   <Button onClick={connectWallet}>Connect Wallet</Button>

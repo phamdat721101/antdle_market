@@ -7,7 +7,7 @@ import { useWallet } from '@/hooks/use-wallet';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const Transactions = () => {
-  const { isConnected, walletAddress, connectWallet, leoBalance } = useWallet();
+  const { isConnected, walletAddress, connectWallet, antBalance } = useWallet();
 
   return (
     <Layout>
@@ -18,8 +18,8 @@ const Transactions = () => {
         {walletAddress ? (
           <>
             <div className="mb-6 p-4 bg-secondary border border-border rounded-lg">
-              <h3 className="font-medium text-lg">Your LEO Balance</h3>
-              <p className="text-2xl font-bold text-primary">{leoBalance} LEO</p>
+              <h3 className="font-medium text-lg">Your ANT Balance</h3>
+              <p className="text-2xl font-bold text-primary">{antBalance} ANT</p>
               <p className="text-sm text-muted-foreground mt-1">Token Address: {`0xA1F...1875`}</p>
             </div>
             <Card className="border border-border shadow-md">

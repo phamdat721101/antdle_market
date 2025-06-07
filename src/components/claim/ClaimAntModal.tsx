@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { isAddressValid } from '@/utils/contractHelpers';
 
-export const ClaimLeoModal = () => {
+export const ClaimAntModal = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [walletAddress, setWalletAddress] = useState('');
@@ -57,9 +57,9 @@ export const ClaimLeoModal = () => {
       if (error) {
         if (error.code === '23505') { // Unique violation
           if (error.message.includes('email')) {
-            toast.error("This email has already registered for Leo tokens");
+            toast.error("This email has already registered for ANT tokens");
           } else if (error.message.includes('wallet')) {
-            toast.error("This wallet address has already registered for Leo tokens");
+            toast.error("This wallet address has already registered for ANT tokens");
           } else {
             toast.error("This email or wallet has already been registered");
           }
@@ -67,7 +67,7 @@ export const ClaimLeoModal = () => {
           toast.error(`Error: ${error.message}`);
         }
       } else {
-        toast.success("Success! You will receive your Leo tokens soon", {
+        toast.success("Success! You will receive your ANT tokens soon", {
           description: "We'll process your claim shortly"
         });
         setIsOpen(false);
@@ -85,14 +85,14 @@ export const ClaimLeoModal = () => {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button variant="default" className="text-white bg-orange-600 hover:bg-orange-700">
-          Claim Leo
+          Claim ANT
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Claim Your Leo Tokens</DialogTitle>
+          <DialogTitle>Claim Your ANT Tokens</DialogTitle>
           <DialogDescription>
-            Enter your information below to receive free Leo tokens for trading.
+            Enter your information below to receive free ANT tokens for trading.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">

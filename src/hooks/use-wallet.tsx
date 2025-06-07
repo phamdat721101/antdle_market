@@ -1,13 +1,13 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { formatAddress, LEO_TOKEN_ADDRESS, getTokenBalance } from '@/utils/contractHelpers';
+import { formatAddress, ANT_TOKEN_ADDRESS, getTokenBalance } from '@/utils/contractHelpers';
 import { ethers } from 'ethers';
 
 export const useWallet = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [leoBalance, setLeoBalance] = useState("0");
+  const [antBalance, setAntBalance] = useState("0");
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
   const [accounts, setAccounts] = useState<string[]>([]);
 
@@ -23,8 +23,8 @@ export const useWallet = () => {
         const ethProvider = new ethers.BrowserProvider(window.ethereum);
         setProvider(ethProvider);
         
-        // Fetch LEO token balance
-        fetchLeoBalance(savedAddress, ethProvider);
+        // Fetch ANT token balance
+        fetchAntBalance(savedAddress, ethProvider);
         
         // Get all accounts
         fetchAccounts();
@@ -58,7 +58,7 @@ export const useWallet = () => {
       
       // Refresh balance for new account
       if (provider) {
-        fetchLeoBalance(newAccount, provider);
+        fetchAntBalance(newAccount, provider);
       }
       
       toast.success("Account Changed", {
@@ -109,27 +109,27 @@ export const useWallet = () => {
     }
   };
   
-  // Function to fetch LEO token balance
-  const fetchLeoBalance = async (address: string, ethProvider: ethers.BrowserProvider | null) => {
+  // Function to fetch ANT token balance
+  const fetchAntBalance = async (address: string, ethProvider: ethers.BrowserProvider | null) => {
     if (!address) return;
     
     try {
       // Try to get actual on-chain balance
       if (ethProvider) {
-        const balance = await getTokenBalance(LEO_TOKEN_ADDRESS, address, ethProvider);
-        setLeoBalance(balance);
+        const balance = await getTokenBalance(ANT_TOKEN_ADDRESS, address, ethProvider);
+        setAntBalance(balance);
         // Cache balance in localStorage for persistence
-        localStorage.setItem('leoBalance', balance);
+        localStorage.setItem('antBalance', balance);
       } else {
         // Use cached balance if provider not available
-        const cachedBalance = localStorage.getItem('leoBalance') || "0";
-        setLeoBalance(cachedBalance);
+        const cachedBalance = localStorage.getItem('antBalance') || "0";
+        setAntBalance(cachedBalance);
       }
     } catch (error) {
-      console.error("Error fetching LEO balance:", error);
+      console.error("Error fetching ANT balance:", error);
       // Fallback to cached balance
-      const cachedBalance = localStorage.getItem('leoBalance') || "0";
-      setLeoBalance(cachedBalance);
+      const cachedBalance = localStorage.getItem('antBalance') || "0";
+      setAntBalance(cachedBalance);
     }
   };
 
@@ -155,8 +155,8 @@ export const useWallet = () => {
         setWalletAddress(userAddress);
         setIsConnected(true);
         
-        // Fetch LEO balance
-        fetchLeoBalance(userAddress, ethProvider);
+        // Fetch ANT balance
+        fetchAntBalance(userAddress, ethProvider);
         
         toast.success("Wallet Connected", {
           description: `Connected to ${formatAddress(userAddress)}`,
@@ -177,8 +177,8 @@ export const useWallet = () => {
         
         // Set simulated balance
         const simulatedBalance = "100.00";
-        setLeoBalance(simulatedBalance);
-        localStorage.setItem('leoBalance', simulatedBalance);
+        setAntBalance(simulatedBalance);
+        localStorage.setItem('antBalance', simulatedBalance);
         
         toast.success("Wallet Connected", {
           description: `Connected to ${formatAddress(simulatedAddress)}`,
@@ -197,11 +197,11 @@ export const useWallet = () => {
   const disconnectWallet = () => {
     // Remove from localStorage
     localStorage.removeItem('walletAddress');
-    localStorage.removeItem('leoBalance');
+    localStorage.removeItem('antBalance');
     
     setWalletAddress(null);
     setIsConnected(false);
-    setLeoBalance("0");
+    setAntBalance("0");
     setProvider(null);
     setAccounts([]);
     
@@ -213,14 +213,14 @@ export const useWallet = () => {
   // Function to refresh balance (for when transactions happen)
   const refreshBalance = () => {
     if (walletAddress) {
-      fetchLeoBalance(walletAddress, provider);
+      fetchAntBalance(walletAddress, provider);
     }
   };
 
   return {
     isConnected,
     walletAddress,
-    leoBalance,
+    antBalance,
     accounts,
     connectWallet,
     disconnectWallet,
